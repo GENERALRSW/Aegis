@@ -1,0 +1,22 @@
+.af-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.af-count-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.af-count { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; font-family: var(--font-sans); border: 1px solid var(--border); color: var(--muted); background: var(--card); }
+.af-count.unreviewed { color: #E24B4A; background: rgba(226,75,74,0.08); border-color: rgba(226,75,74,0.2); }
+.af-count.verified   { color: #22C55E; background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.2);  }
+.af-count.escalated  { color: #9b8fef; background: rgba(155,143,239,0.08);border-color: rgba(155,143,239,0.2);}
+.af-filters { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-shrink: 0; }
+.af-list { display: flex; flex-direction: column; gap: 8px; }
+.af-card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid; border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer; transition: background 0.15s; }
+.af-card:hover { background: var(--elevated); }
+.af-thumb { width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.af-body { flex: 1; min-width: 0; }
+.af-top { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; flex-wrap: wrap; }
+.af-title { font-size: 12px; font-weight: 500; color: var(--text); font-family: var(--font-sans); }
+.af-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 4px; }
+.af-summary { font-size: 11px; color: var(--text-sub); line-height: 1.5; margin-bottom: 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.af-meta { display: flex; align-items: center; gap: 10px; font-size: 10px; color: var(--muted); }
+.af-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.af-actions { display: flex; gap: 5px; }
+.af-btn { font-size: 10px; padding: 3px 9px; border-radius: 5px; border: 1px solid var(--border); background: var(--elevated); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.af-btn:hover { color: var(--text); }
+.af-btn.review { border-color: rgba(26,122,74,0.4); color: #22C55E; background: rgba(26,122,74,0.08); }

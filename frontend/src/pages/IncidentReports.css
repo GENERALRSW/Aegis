@@ -1,0 +1,27 @@
+.ir-header { display: flex; align-items: flex-start; justify-content: space-between; }
+.ir-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+.ir-list-pane { width: 320px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.ir-filters { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ir-list { flex: 1; overflow-y: auto; padding: 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.ir-list-item { background: var(--card); border: 1px solid var(--border); border-left: 3px solid; border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: background 0.15s; }
+.ir-list-item:hover { background: var(--elevated); }
+.ir-list-item.selected { background: var(--elevated); border-color: var(--border); }
+.ir-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.ir-item-id { font-size: 10px; font-weight: 500; color: var(--muted); font-family: var(--font-mono); }
+.ir-item-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; line-height: 1.3; font-family: var(--font-sans); }
+.ir-item-meta { font-size: 10px; color: var(--muted); font-family: var(--font-sans); }
+.ir-detail { flex: 1; padding: 0 26px 0 20px; }
+.ir-doc { padding: 0; }
+.ir-doc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.ir-doc-classification { display: flex; align-items: center; margin-bottom: 6px; }
+.ir-doc-title { font-size: 18px; font-weight: 600; color: var(--text); font-family: var(--font-mono); letter-spacing: -0.02em; margin-bottom: 4px; }
+.ir-doc-meta { font-size: 11px; color: var(--muted); font-family: var(--font-sans); }
+.ir-doc-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.ir-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.ir-section:last-child { border-bottom: none; }
+.ir-section-title { font-size: 10px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; font-family: var(--font-sans); }
+.ir-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ir-sig-box { border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.ir-sig-label { font-size: 10px; color: var(--muted); margin-bottom: 24px; font-family: var(--font-sans); }
+.ir-sig-line { border-top: 1px solid var(--border); padding-top: 6px; font-size: 11px; color: var(--text-sub); font-family: var(--font-sans); }
+.ir-sig-pending { color: var(--muted); font-style: italic; }

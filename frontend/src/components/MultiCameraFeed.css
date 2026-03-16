@@ -1,0 +1,460 @@
+/* ─── MultiCameraFeed.css ─────────────────────────────── */
+
+/* ── Container ── */
+.mcf-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mcf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.mcf-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.mcf-title {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+.mcf-count {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  background: var(--elevated);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.mcf-add-group {
+  display: flex;
+  gap: 6px;
+}
+
+.mcf-add-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.mcf-add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mcf-mobile-btn {
+  border-color: rgba(74,159,226,0.4);
+  color: #4A9FE2;
+  background: rgba(74,159,226,0.07);
+}
+.mcf-mobile-btn:hover:not(:disabled) {
+  background: rgba(74,159,226,0.14) !important;
+}
+
+/* ── Grid layout ── */
+.mcf-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.mcf-cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.mcf-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ── Camera slot ── */
+.cs-slot {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Slot header */
+.cs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cs-header-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.cs-slot-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.cs-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #E24B4A;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  background: rgba(226,75,74,0.1);
+  border: 1px solid rgba(226,75,74,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.cs-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #E24B4A;
+  animation: cs-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cs-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.cs-cam-id {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-remove-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-remove-btn:hover {
+  border-color: rgba(226,75,74,0.4);
+  color: #E24B4A;
+}
+
+/* Video container */
+.cs-video-wrap {
+  position: relative;
+  background: #080808;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+}
+
+.cs-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Placeholder */
+.cs-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #333;
+  font-family: var(--font-sans);
+  background: #080808;
+}
+.cs-placeholder.error { color: #E24B4A; }
+
+/* Spinner */
+.cs-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: cs-spin 0.8s linear infinite;
+}
+@keyframes cs-spin { to { transform: rotate(360deg); } }
+
+/* Detection overlay */
+.cs-detections-overlay {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cs-det-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 9px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  backdrop-filter: blur(4px);
+}
+
+.cs-det-conf {
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+/* Sending dot */
+.cs-sending-dot {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: cs-pulse 0.8s ease-in-out infinite;
+}
+
+/* Controls */
+.cs-controls {
+  display: flex;
+  gap: 7px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.cs-location-input {
+  flex: 1;
+  height: 32px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 10px;
+  font-size: 11px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.15s;
+  min-width: 0;
+}
+.cs-location-input:focus    { border-color: rgba(26,122,74,0.4); }
+.cs-location-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cs-btn-start, .cs-btn-stop {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.cs-btn-stop {
+  border-color: rgba(226,75,74,0.4);
+  color: #E24B4A;
+  background: rgba(226,75,74,0.08);
+}
+.cs-btn-stop:hover { background: rgba(226,75,74,0.15) !important; }
+
+/* Stats row */
+.cs-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border);
+}
+
+.cs-stat {
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-right: 1px solid var(--border);
+}
+.cs-stat:last-child { border-right: none; }
+
+.cs-stat-key {
+  font-size: 8px;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cs-stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text);
+  line-height: 1;
+}
+
+/* CV Summary */
+.cs-summary {
+  margin: 0 10px 10px;
+  border-left: 3px solid;
+  background: var(--elevated);
+  border-radius: 0 7px 7px 0;
+  padding: 6px 10px;
+}
+
+.cs-summary-label {
+  font-size: 8px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cs-summary-text {
+  font-size: 10px;
+  color: var(--text-sub);
+  line-height: 1.5;
+  font-family: var(--font-sans);
+}
+
+/* ── Mobile slot URL panel ── */
+.cs-mobile-waiting-badge {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.cs-mobile-panel {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cs-mobile-ip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cs-mobile-ip-label {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.cs-mobile-ip-input {
+  flex: 1;
+  height: 26px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  outline: none;
+}
+.cs-mobile-ip-input:focus { border-color: rgba(74,159,226,0.5); }
+.cs-mobile-ip-input::placeholder { color: var(--muted); }
+
+.cs-mobile-url-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+.cs-mobile-url-text {
+  flex: 1;
+  font-size: 9px;
+  color: #4A9FE2;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-mobile-copy-btn {
+  background: rgba(74,159,226,0.12);
+  border: 1px solid rgba(74,159,226,0.3);
+  border-radius: 4px;
+  color: #4A9FE2;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  transition: background 0.15s;
+}
+.cs-mobile-copy-btn:hover { background: rgba(74,159,226,0.22); }
+
+.cs-mobile-hint {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .mcf-cols-2 {
+    grid-template-columns: 1fr;
+  }
+}

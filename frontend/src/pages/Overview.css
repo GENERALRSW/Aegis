@@ -1,0 +1,198 @@
+/* ─── Overview.css ───────────────────────────────────── */
+
+.overview-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 0 26px;
+}
+
+/* Header */
+.overview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 0 14px;
+  flex-shrink: 0;
+}
+
+.overview-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Notification button */
+.notif-btn {
+  width: 38px; height: 38px;
+  background: var(--card); 
+  border: 1px solid var(--border);
+  border-radius: 50px; 
+  display: flex; 
+  align-items: 
+  center; justify-content: center;
+  cursor: pointer; 
+  position: relative;
+}
+.notif-dot {
+  position: absolute; top: 8px; right: 8px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--weapon); border: 1.5px solid var(--bg);
+}
+
+/* User chip */
+.user-chip {
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
+  background: var(--card); 
+  border: 1px solid var(--border);
+  border-radius: 50px; 
+  padding: 6px 12px 6px 8px;
+}
+.user-chip-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--green); display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: #fff; font-family: var(--font-mono);
+}
+.user-chip-time {
+  font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--font-mono);
+}
+.user-chip-date {
+  padding: 2px 8px; background: var(--elevated);
+  border-radius: var(--radius-sm); font-size: 11px;
+  color: var(--text); font-family: var(--font-mono);
+}
+
+/* JDF chip */
+.jdf-chip {
+  display: flex; 
+  align-items: center; 
+  gap: 10px;
+  background: var(--card); 
+  border: 1px solid var(--border);
+  border-radius: 50px; 
+  padding: 8px 14px; 
+  min-width: 225px;
+}
+.jdf-icon {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--elevated);
+  display: flex; align-items: center; justify-content: center;
+}
+.jdf-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.jdf-label { font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--font-sans); }
+.jdf-status { font-size: 10px; font-family: var(--font-sans); }
+
+/* Toggle */
+.toggle {
+  width: 40px; height: 22px; border-radius: 11px; background: var(--dim);
+  cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--green); }
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  transition: left 0.2s;
+}
+.toggle.on .toggle-thumb { left: 21px; }
+
+/* Stat row */
+.overview-stats {
+  display: flex; gap: 12px; margin-bottom: 12px; flex-shrink: 0;
+}
+.stat-denom { font-size: 16px; color: var(--muted); }
+
+/* Main grid */
+.overview-grid {
+  flex: 1; display: grid;
+  grid-template-columns: 290px 1fr 270px;
+  gap: 12px; overflow: hidden; min-height: 0;
+}
+
+/* Camera panel — webcam feed + list stacked */
+.camera-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.cam-list-wrap {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Tabs */
+.cam-tabs {
+  display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.cam-tab {
+  flex: 1; padding: 9px 3px; border: none; background: transparent;
+  color: var(--muted); font-size: 9px; font-weight: 600;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  font-family: var(--font-mono); transition: all 0.15s;
+}
+.cam-tab.active { color: var(--text); border-bottom-color: var(--green); }
+.cam-tab:hover:not(.active) { color: var(--text-sub); }
+
+/* Camera list */
+.cam-list-header {
+  display: flex; justify-content: space-between;
+  padding: 8px 14px 4px; flex-shrink: 0;
+  font-size: 10px; color: var(--muted); font-family: var(--font-sans);
+}
+.cam-list { flex: 1; overflow: auto; padding: 0 14px 14px; }
+.cam-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.cam-row:last-child { border-bottom: none; }
+.cam-row-info { flex: 1; }
+.cam-row-zone { display: block; font-size: 9px; color: var(--muted); margin-bottom: 2px; font-family: var(--font-sans); }
+.cam-row-name { display: block; font-size: 11px; color: var(--text); font-family: var(--font-mono); margin-bottom: 5px; }
+.cam-bar-track { height: 2px; background: var(--dim); border-radius: 1px; overflow: hidden; }
+.cam-bar-fill  { height: 100%; border-radius: 1px; transition: width 0.6s ease; }
+.cam-row-count { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--font-mono); min-width: 28px; text-align: right; flex-shrink: 0; }
+
+/* Detection cards */
+.detection-col { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
+.detection-card { padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.detection-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.detection-info { flex: 1; }
+.detection-title { font-size: 22px; font-weight: 700; font-family: var(--font-mono); color: var(--text); line-height: 1.2; margin-bottom: 6px; }
+.detection-subtitle { font-size: 11px; color: var(--muted); font-family: var(--font-sans); }
+.detection-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.detection-desc { font-size: 11px; color: var(--text-sub); line-height: 1.5; border-top: 1px solid var(--border); padding-top: 10px; font-family: var(--font-sans); }
+
+/* Right column */
+.right-col { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
+.right-card { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+
+/* Missing persons */
+.missing-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; }
+.missing-count  { text-align: right; }
+.missing-num    { font-size: 26px; font-weight: 700; font-family: var(--font-mono); color: var(--text); line-height: 1; display: block; }
+.missing-denom  { font-size: 13px; color: var(--muted); }
+.missing-label  { font-size: 10px; color: var(--muted); font-family: var(--font-sans); display: block; margin-top: 2px; }
+
+.missing-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.missing-row:last-child { border-bottom: none; }
+.missing-avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--elevated);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--text); font-family: var(--font-mono); flex-shrink: 0;
+}
+.missing-info  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.missing-name  { font-size: 11px; font-weight: 500; color: var(--text); font-family: var(--font-sans); }
+.missing-detail{ font-size: 9px; color: var(--muted); font-family: var(--font-sans); }

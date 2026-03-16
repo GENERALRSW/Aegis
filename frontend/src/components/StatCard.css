@@ -1,0 +1,30 @@
+/* ─── StatCard.css ───────────────────────────────────── */
+
+.stat-card {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-family: var(--font-sans);
+}
+
+.stat-value {
+  font-size: 34px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  line-height: 1;
+  color: var(--text);
+}
+
+.stat-sub {
+  font-size: 11px;
+  margin-top: 8px;
+  font-family: var(--font-sans);
+}

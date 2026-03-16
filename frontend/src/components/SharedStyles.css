@@ -1,0 +1,143 @@
+/* ─── SharedStyles.css ───────────────────────────────── */
+/* Reusable utility classes across all Aegis pages       */
+
+/* Layout */
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 0 26px;
+}
+
+.page-header {
+  padding: 22px 0 16px;
+  flex-shrink: 0;
+}
+
+.page-title {
+  font-size: 30px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.page-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card-body {
+  padding: 16px 18px;
+}
+
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Badges / Tags */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  border: 1px solid transparent;
+}
+
+.badge-weapon  { background: rgba(226,75,74,0.15);  color: var(--weapon);   border-color: rgba(226,75,74,0.3);  }
+.badge-intruder{ background: rgba(74,159,226,0.15); color: var(--intruder); border-color: rgba(74,159,226,0.3); }
+.badge-conflict{ background: rgba(245,197,24,0.15); color: var(--conflict); border-color: rgba(245,197,24,0.3); }
+.badge-online  { background: rgba(34,197,94,0.15);  color: var(--online);   border-color: rgba(34,197,94,0.3);  }
+.badge-muted   { background: var(--elevated);       color: var(--muted);                                         }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--elevated);
+  color: var(--text-sub);
+  transition: all 0.15s;
+}
+
+.btn:hover { background: var(--dim); color: var(--text); }
+
+.btn-primary {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.btn-primary:hover { opacity: 0.88; }
+
+.btn-danger {
+  background: rgba(226,75,74,0.1);
+  border-color: rgba(226,75,74,0.4);
+  color: var(--weapon);
+}
+.btn-danger:hover { background: rgba(226,75,74,0.2); }
+
+/* Status dots */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot-online  { background: var(--online);   }
+.status-dot-weapon  { background: var(--weapon);   }
+.status-dot-amber   { background: #EF9F27;         }
+.status-dot-muted   { background: var(--muted);    }
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+/* Filter select */
+.filter-select {
+  font-size: 11px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--elevated);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+.filter-select:focus { border-color: var(--green); }

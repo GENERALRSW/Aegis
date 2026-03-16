@@ -1,0 +1,319 @@
+/* ─── DashboardLayout.css ────────────────────────────── */
+
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #2C2C31;
+  overflow: hidden;
+  padding: 12px;
+  gap: 12px;
+}
+
+/* ── Sidebar ──────────────────────────────────────────── */
+.sidebar {
+  width: 62px;
+  flex-shrink: 0;
+  background: #161616;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 50px 0;
+  overflow: visible;
+  position: relative;
+  z-index: 50;
+}
+
+/* ── Logo ─────────────────────────────────────────────── */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 13px;
+  margin-bottom: 20px;
+  height: 38px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1f9a5e 0%, #145e39 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(26,122,74,0.4);
+}
+
+.sidebar-logo-text {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text);
+  opacity: 1;
+  letter-spacing: -0.02em;
+}
+
+/* ── Divider ──────────────────────────────────────────── */
+.sidebar-divider {
+  width: calc(100% - 24px);
+  margin: 8px 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #2a2a2a 30%,
+    #2a2a2a 70%,
+    transparent 100%
+  );
+  flex-shrink: 0;
+}
+
+/* ── Nav ──────────────────────────────────────────────── */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  gap: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: #454545;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: visible;
+  transition: color 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 0;
+}
+
+.sidebar-nav-item:hover {
+  color: #777;
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── Protruding pill active state ── */
+.sidebar-nav-item.active {
+  /*
+    Pill color matches the OUTER layout background (#2C2C31).
+    Fixed left margin so pill never extends beyond sidebar edges.
+    Right side flush with sidebar edge — no border-radius on right.
+  */
+  background: #2C2C31;
+  color: #ffffff;
+  z-index: 2;
+  overflow: visible;
+  margin-left: 12px;
+  width: calc(100% - 12px);
+  border-radius: 16px 0 0 16px;
+}
+
+/*
+  S-curve illusion:
+  Each pseudo-element is a square FILLED with sidebar color (#161616).
+  Its border-radius carves a curved corner out of that square.
+  The box-shadow in PILL color (#2C2C31) fills the resulting notch,
+  making the sidebar appear to curve concavely into the pill.
+*/
+
+/* Top concave curve — sits ABOVE the active pill, flush right */
+.sidebar-nav-item.active::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;        /* directly above the pill */
+  right: 0;            /* flush with pill's right edge */
+  width: 22px;
+  height: 22px;
+  background: #161616; /* sidebar color fills the square */
+  border-bottom-right-radius: 22px; /* carves the concave arc */
+  box-shadow: 6px 6px 0 0 #2C2C31; /* pill color paints the notch */
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Bottom concave curve — sits BELOW the active pill, flush right */
+.sidebar-nav-item.active::after {
+  content: '';
+  position: absolute;
+  top: 100%;           /* directly below the pill */
+  right: 0;
+  width: 22px;
+  height: 22px;
+  background: #161616;
+  border-top-right-radius: 22px;
+  box-shadow: 6px -6px 0 0 #2C2C31;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/*
+  When sidebar expands, keep the pill's left inset consistent.
+  The pill grows naturally with the sidebar — labels become visible.
+*/
+/* Click feedback */
+.sidebar-nav-item:active {
+  opacity: 0.85;
+}
+
+/* ── Icon container ── */
+.sidebar-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Active icon + label — white on dark pill */
+.sidebar-nav-item.active .sidebar-nav-icon svg {
+  color: #ffffff;
+}
+
+/* Inactive icon glow on hover */
+.sidebar-nav-item:hover .sidebar-nav-icon svg {
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.15));
+}
+
+.sidebar-nav-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: inherit;
+  font-family: var(--font-sans);
+  opacity: 0;
+  pointer-events: none;
+  letter-spacing: 0.01em;
+}
+
+/* ── Footer ───────────────────────────────────────────── */
+.sidebar-footer {
+  width: 100%;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: auto;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 5px 5px;
+  border-radius: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1f9a5e 0%, #145e39 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(26,122,74,0.3);
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+}
+
+.sidebar-user-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+.sidebar-user-role {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-sans);
+}
+
+.sidebar-logout {
+  color: #4a4a4a;
+}
+
+.sidebar-logout:hover {
+  color: var(--weapon) !important;
+  background: rgba(226, 75, 74, 0.08) !important;
+}
+
+/* ── Main ─────────────────────────────────────────────── */
+.layout-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 22px;
+}
+
+/* ── Status Bar ───────────────────────────────────────── */
+.status-bar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 20px;
+  flex-shrink: 0;
+  border-radius: 0 0 22px 22px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  background: rgba(255, 255, 255, 0.1); 
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  padding: 10px;
+  margin-top: 20px;
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.status-dot.online  { background: var(--online); box-shadow: 0 0 4px var(--online); }
+.status-dot.warning { background: #EF9F27; }
+.status-dot.offline { background: var(--weapon); }

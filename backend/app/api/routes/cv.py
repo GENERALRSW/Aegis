@@ -32,7 +32,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.security import (
     create_phone_stream_token,
@@ -59,7 +59,12 @@ class DetectJSONRequest(BaseModel):
     camera_id: str
     source_type: str = "unknown"   # phone | laptop | usb | ip
     frame_b64: str                 # base64-encoded image bytes
-    location: Optional[str] = None
+    location: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        pattern=r"^[a-zA-Z0-9 ,.\-_()/]+$",
+        description="Plain-text location label. No HTML or special characters.",
+    )
 
 
 class NLQueryRequest(BaseModel):
@@ -184,6 +189,9 @@ async def detect_multipart(
     location: Optional[str] = Form(None),
     user: Dict = Depends(require_operator_or_above),
 ) -> CVDetectResponse:
+    import re
+    if location and (len(location) > 200 or not re.match(r"^[a-zA-Z0-9 ,.\-_()/]+$", location)):
+        raise HTTPException(status_code=422, detail="Invalid location value")
     if frame.content_type and not frame.content_type.startswith("image/"):
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,

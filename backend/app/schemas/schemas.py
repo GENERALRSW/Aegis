@@ -42,11 +42,14 @@ class Detection(BaseModel):
 
 # ─── Camera ───────────────────────────────────────────────────────────────────
 
+_LOCATION_PATTERN = r"^[a-zA-Z0-9 ,.\-_()/]+$"
+
+
 class CameraRegisterRequest(BaseModel):
     camera_id: str = Field(..., min_length=3, max_length=64)
     name: str = Field(..., max_length=128)
     camera_type: CameraType
-    location: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=200, pattern=_LOCATION_PATTERN)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = None
@@ -66,7 +69,7 @@ class CameraResponse(BaseModel):
 
 class CameraUpdateRequest(BaseModel):
     name: Optional[str] = None
-    location: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=200, pattern=_LOCATION_PATTERN)
     status: Optional[CameraStatus] = None
     metadata: Optional[Dict[str, Any]] = None
 

@@ -31,7 +31,7 @@ from typing import Any, Dict, List, Optional
 
 import base64
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -60,6 +60,7 @@ from app.services.cloudinary_service import (
     person_folder,
     upload_photo,
 )
+from app.services.admin_audit import write_admin_audit
 from app.services.feature_flags import VALID_FLAGS, feature_flags
 
 logger = get_logger(__name__)
@@ -159,13 +160,20 @@ async def list_restricted_persons(
 )
 async def remove_restricted_person(
     person_id: str,
-    _: Dict = Depends(require_jdf_or_admin),
+    request: Request,
+    admin: Dict = Depends(require_jdf_or_admin),
 ) -> None:
     result = await restricted_persons_col().update_one(
         {"person_id": person_id}, {"$set": {"active": False}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Restricted person not found")
+    await write_admin_audit(
+        admin=admin,
+        action="remove_restricted_person",
+        detail={"person_id": person_id},
+        request=request,
+    )
 
 
 # ── Missing / Criminal Persons ────────────────────────────────────────────────
@@ -345,7 +353,8 @@ async def reencode_missing_person(
 )
 async def mark_as_found(
     person_id: str,
-    _: Dict = Depends(require_jdf_or_admin),
+    request: Request,
+    admin: Dict = Depends(require_jdf_or_admin),
 ) -> Dict:
     result = await missing_persons_col().update_one(
         {"person_id": person_id},
@@ -353,6 +362,12 @@ async def mark_as_found(
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Person not found")
+    await write_admin_audit(
+        admin=admin,
+        action="mark_missing_person_found",
+        detail={"person_id": person_id},
+        request=request,
+    )
     return {"person_id": person_id, "status": "found"}
 
 
@@ -722,8 +737,9 @@ async def fr_status(_: Dict = Depends(require_any_role)) -> FRStatusResponse:
     summary="Enable or disable facial recognition at runtime (admin only)",
 )
 async def toggle_fr(
+    request: Request,
     enabled: bool = Query(..., description="true to enable, false to disable"),
-    _: Dict = Depends(require_admin),
+    admin: Dict = Depends(require_admin),
 ) -> Dict:
     if not settings.facial_recognition_admin_override:
         raise HTTPException(
@@ -739,7 +755,13 @@ async def toggle_fr(
                   "updated_at": datetime.now(timezone.utc)}},
         upsert=True,
     )
-    logger.info("Facial recognition toggled", enabled=enabled)
+    # Jamaica DPA: biometric processing changes must be audited
+    await write_admin_audit(
+        admin=admin,
+        action="toggle_facial_recognition",
+        detail={"enabled": enabled},
+        request=request,
+    )
     return {"facial_recognition_enabled": enabled}
 
 
@@ -774,20 +796,27 @@ async def list_feature_flags(_: Dict = Depends(require_any_role)) -> Dict:
 )
 async def set_feature_flag(
     flag: str,
+    request: Request,
     enabled: bool = Query(..., description="true to enable, false to disable"),
-    user: Dict = Depends(require_admin),
+    admin: Dict = Depends(require_admin),
 ) -> Dict:
     if flag not in VALID_FLAGS:
         raise HTTPException(
             status_code=400,
             detail=f"Unknown flag '{flag}'. Valid flags: {sorted(VALID_FLAGS)}",
         )
-    await feature_flags.set(flag, enabled, updated_by=user.get("sub", "admin"))
+    await feature_flags.set(flag, enabled, updated_by=admin.get("sub", "admin"))
 
     # Keep face_engine's in-process state in sync when toggling facial_recognition
     if flag == "facial_recognition" and settings.facial_recognition_admin_override:
         face_engine.admin_set_enabled(enabled)
 
+    await write_admin_audit(
+        admin=admin,
+        action="set_feature_flag",
+        detail={"flag": flag, "enabled": enabled},
+        request=request,
+    )
     return {"flag": flag, "enabled": enabled, "source": "runtime"}
 
 
@@ -798,7 +827,8 @@ async def set_feature_flag(
 )
 async def reset_feature_flag(
     flag: str,
-    _: Dict = Depends(require_admin),
+    request: Request,
+    admin: Dict = Depends(require_admin),
 ) -> Dict:
     if flag not in VALID_FLAGS:
         raise HTTPException(
@@ -806,4 +836,10 @@ async def reset_feature_flag(
             detail=f"Unknown flag '{flag}'. Valid flags: {sorted(VALID_FLAGS)}",
         )
     await feature_flags.reset(flag)
+    await write_admin_audit(
+        admin=admin,
+        action="reset_feature_flag",
+        detail={"flag": flag},
+        request=request,
+    )
     return {"flag": flag, "source": "config", "message": "Reset to config default"}

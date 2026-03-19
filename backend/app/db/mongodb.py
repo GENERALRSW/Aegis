@@ -75,6 +75,15 @@ def system_settings_col():
     return get_db()["system_settings"]
 
 
+def admin_audit_col():
+    """
+    Stores a tamper-evident log of every privileged admin action.
+    Separate from security_audit (which logs facial-recognition detections).
+    Required by Jamaica DPA — audit trail of all access to sensitive data.
+    """
+    return get_db()["admin_audit"]
+
+
 # ── Index provisioning ────────────────────────────────────────────────────────
 
 async def _ensure_indexes() -> None:
@@ -112,5 +121,10 @@ async def _ensure_indexes() -> None:
     await db["security_audit"].create_index([("detected_at", -1)])
     await db["security_audit"].create_index("person_id")
     await db["security_audit"].create_index("event_type")
+
+    # admin_audit — privileged action log (Jamaica DPA requirement)
+    await db["admin_audit"].create_index([("timestamp", -1)])
+    await db["admin_audit"].create_index("admin_id")
+    await db["admin_audit"].create_index("action")
 
     logger.info("MongoDB indexes ensured")

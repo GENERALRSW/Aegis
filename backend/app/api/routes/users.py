@@ -26,6 +26,7 @@ from app.core.security import (
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.mongodb import users_col
+from app.services.admin_audit import write_admin_audit
 
 logger = get_logger(__name__)
 from app.schemas.schemas import (
@@ -209,6 +210,7 @@ async def list_users(_: Dict = Depends(require_admin)) -> List[UserResponse]:
 )
 async def unlock_account(
     user_id: str,
+    request: Request,
     admin: Dict = Depends(require_admin),
 ) -> UserResponse:
     result = await users_col().find_one_and_update(
@@ -218,7 +220,12 @@ async def unlock_account(
     )
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
-    logger.info("Account unlocked by admin", user_id=user_id, admin=admin.get("email"))
+    await write_admin_audit(
+        admin=admin,
+        action="unlock_account",
+        detail={"target_user_id": user_id},
+        request=request,
+    )
     return UserResponse(**_serialize_user(result))
 
 
@@ -230,12 +237,15 @@ async def unlock_account(
 async def update_role(
     user_id: str,
     role: str,
-    _: Dict = Depends(require_admin),
+    request: Request,
+    admin: Dict = Depends(require_admin),
 ) -> UserResponse:
     from app.models.enums import UserRole
     if role not in [r.value for r in UserRole]:
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
 
+    # Fetch current role before update so we can log what changed
+    existing = await users_col().find_one({"user_id": user_id}, {"role": 1})
     result = await users_col().find_one_and_update(
         {"user_id": user_id},
         {"$set": {"role": role}},
@@ -243,4 +253,28 @@ async def update_role(
     )
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
+    await write_admin_audit(
+        admin=admin,
+        action="update_user_role",
+        detail={
+            "target_user_id": user_id,
+            "old_role": existing.get("role") if existing else "unknown",
+            "new_role": role,
+        },
+        request=request,
+    )
     return UserResponse(**_serialize_user(result))
+
+
+@router.get(
+    "/admin-audit",
+    summary="List admin action audit log (admin only)",
+)
+async def get_admin_audit_log(
+    _: Dict = Depends(require_admin),
+    limit: int = 100,
+    skip: int = 0,
+) -> List[Dict]:
+    from app.db.mongodb import admin_audit_col
+    cursor = admin_audit_col().find({}, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit)
+    return [doc async for doc in cursor]

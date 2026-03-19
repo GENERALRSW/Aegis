@@ -22,8 +22,11 @@ No test suite is currently configured.
 Create a `.env` file in the root:
 ```
 VITE_API_URL=<backend URL for production>
-VITE_ANTHROPIC_API_KEY=<Anthropic API key for Claude integration>
 ```
+
+> **Security note:** API keys (Anthropic, Gemini, etc.) must NEVER be added here.
+> Any `VITE_*` variable is embedded in the browser bundle and visible to anyone.
+> All AI/LLM calls go through the backend — add API keys to the backend `.env` only.
 
 In development, `/api/*` requests are proxied to `https://aegis-backend-2-production.up.railway.app` (configured in `vite.config.js`).
 
@@ -35,7 +38,7 @@ All backend communication is abstracted here. `api.js` is the base HTTP client �
 - `authService.js` — login, register, get current user
 - `alertService.js` — alerts and CV detection events
 - `cameraService.js` — camera CRUD and status
-- `aiService.js` — calls Anthropic Claude directly from the browser for incident summaries and report narratives (model: `claude-sonnet-4-20250514`)
+- `aiService.js` — AI helpers (incident summaries, report narratives, risk assessment). All calls go through the backend `/api/cv/query` endpoint — no API keys in the frontend.
 - `analyticsService.js` — statistics and trend data
 - `missingPersonsService.js` — missing/restricted person profiles and facial recognition
 - `reportService.js` — report storage in localStorage (intentional for prototype)
@@ -54,6 +57,6 @@ Configured in both `jsconfig.json` and `vite.config.js`:
 - `@assets/` → `src/assets/`
 
 ### Key Design Decisions
-- AI (Claude) calls happen **client-side** — the `VITE_ANTHROPIC_API_KEY` is exposed in the browser bundle. This is intentional for the prototype.
-- Incident reports are persisted to **localStorage**, not the backend.
+- AI calls are proxied through the backend (`POST /api/cv/query`) — API keys never leave the server.
+- Incident reports are persisted to **localStorage**, not the backend (prototype limitation — swap `reportService.js` for a backend endpoint before production).
 - Feature flags for facial recognition are fetched from `/api/security/features/`.

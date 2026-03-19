@@ -80,24 +80,57 @@ async def register_user(body: UserCreateRequest) -> UserResponse:
     response_model=TokenResponse,
     summary="Authenticate and receive JWT tokens",
 )
+_MAX_FAILED_ATTEMPTS = 5   # permanently lock after this many consecutive failures
+
 async def login(body: UserLoginRequest, request: Request, response: Response) -> TokenResponse:
     col = users_col()
+    client_ip = request.client.host if request.client else "unknown"
     user = await col.find_one({"email": body.email})
-    if not user or not verify_password(body.password, user["hashed_password"]):
-        # Log every failure with IP and email so brute-force attempts are visible
-        # in the audit trail. Never log the attempted password.
-        client_ip = request.client.host if request.client else "unknown"
-        logger.warning(
-            "Failed login attempt",
-            email=body.email,
-            ip=client_ip,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
+
+    # Unknown email — log and reject without revealing whether the account exists
+    if not user:
+        logger.warning("Failed login attempt — unknown email", email=body.email, ip=client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    # Permanently locked accounts can only be unlocked by an admin
+    if user.get("is_locked", False):
+        logger.warning("Login attempt on permanently locked account", email=body.email, ip=client_ip)
+        raise HTTPException(status_code=403, detail="Account locked. Contact an administrator.")
+
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Account is deactivated")
+
+    if not verify_password(body.password, user["hashed_password"]):
+        new_count = user.get("failed_login_attempts", 0) + 1
+        update: Dict[str, Any] = {"failed_login_attempts": new_count}
+
+        if new_count >= _MAX_FAILED_ATTEMPTS:
+            # Permanently lock — only an admin can clear is_locked via the user management API
+            update["is_locked"] = True
+            logger.warning(
+                "Account permanently locked after repeated failures",
+                email=body.email,
+                ip=client_ip,
+                attempts=new_count,
+            )
+        else:
+            logger.warning(
+                "Failed login attempt",
+                email=body.email,
+                ip=client_ip,
+                attempt=new_count,
+                remaining=_MAX_FAILED_ATTEMPTS - new_count,
+            )
+
+        await col.update_one({"email": body.email}, {"$set": update})
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    # Successful login — reset the failure counter
+    await col.update_one(
+        {"email": body.email},
+        {"$set": {"failed_login_attempts": 0}},
+    )
+    logger.info("Successful login", email=body.email, ip=client_ip)
 
     access_token = create_access_token(
         subject=user["user_id"],
@@ -167,6 +200,26 @@ async def list_users(_: Dict = Depends(require_admin)) -> List[UserResponse]:
     async for doc in cursor:
         users.append(UserResponse(**_serialize_user(doc)))
     return users
+
+
+@router.post(
+    "/{user_id}/unlock",
+    response_model=UserResponse,
+    summary="Unlock a permanently locked account (admin only)",
+)
+async def unlock_account(
+    user_id: str,
+    admin: Dict = Depends(require_admin),
+) -> UserResponse:
+    result = await users_col().find_one_and_update(
+        {"user_id": user_id},
+        {"$set": {"is_locked": False, "failed_login_attempts": 0}},
+        return_document=True,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="User not found")
+    logger.info("Account unlocked by admin", user_id=user_id, admin=admin.get("email"))
+    return UserResponse(**_serialize_user(result))
 
 
 @router.put(

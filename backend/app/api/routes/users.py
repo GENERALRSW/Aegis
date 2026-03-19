@@ -24,7 +24,10 @@ from app.core.security import (
     verify_password,
 )
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.db.mongodb import users_col
+
+logger = get_logger(__name__)
 from app.schemas.schemas import (
     TokenResponse,
     UserCreateRequest,
@@ -77,10 +80,18 @@ async def register_user(body: UserCreateRequest) -> UserResponse:
     response_model=TokenResponse,
     summary="Authenticate and receive JWT tokens",
 )
-async def login(body: UserLoginRequest, response: Response) -> TokenResponse:
+async def login(body: UserLoginRequest, request: Request, response: Response) -> TokenResponse:
     col = users_col()
     user = await col.find_one({"email": body.email})
     if not user or not verify_password(body.password, user["hashed_password"]):
+        # Log every failure with IP and email so brute-force attempts are visible
+        # in the audit trail. Never log the attempted password.
+        client_ip = request.client.host if request.client else "unknown"
+        logger.warning(
+            "Failed login attempt",
+            email=body.email,
+            ip=client_ip,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",

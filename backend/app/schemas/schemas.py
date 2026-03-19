@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.enums import (
     CameraStatus,
@@ -108,9 +108,35 @@ class EventQueryParams(BaseModel):
 class UserCreateRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=32)
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=12)
     role: UserRole = UserRole.viewer
     full_name: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def password_complexity(cls, v: str) -> str:
+        """
+        Enforce a minimum password policy:
+        - 12+ characters (NIST recommends length over complexity, but both is better)
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - At least one special character
+
+        This runs at the schema layer so it applies to every registration path.
+        """
+        errors = []
+        if not any(c.isupper() for c in v):
+            errors.append("one uppercase letter")
+        if not any(c.islower() for c in v):
+            errors.append("one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            errors.append("one digit")
+        if not any(c in r"!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
+            errors.append("one special character (!@#$%^&* etc.)")
+        if errors:
+            raise ValueError(f"Password must contain at least: {', '.join(errors)}")
+        return v
 
 
 class UserLoginRequest(BaseModel):

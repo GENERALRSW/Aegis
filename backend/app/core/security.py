@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import bcrypt
 from jose import JWTError, jwt
@@ -95,9 +95,26 @@ def decode_token(token: str) -> Dict[str, Any]:
 # ── Dependency: current user ──────────────────────────────────────────────────
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    cookie_token: Optional[str] = Cookie(default=None, alias="access_token"),
+    bearer: Optional[HTTPAuthorizationCredentials] = Depends(
+        HTTPBearer(auto_error=False)
+    ),
 ) -> Dict[str, Any]:
-    payload = decode_token(credentials.credentials)
+    """
+    Resolve the caller's identity from either:
+      1. The HttpOnly 'access_token' cookie (set by /login — preferred, JS-inaccessible)
+      2. An Authorization: Bearer header (kept for WebSocket & phone-stream clients
+         that cannot use cookies)
+    Cookie takes priority when both are present.
+    """
+    raw = cookie_token or (bearer.credentials if bearer else None)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    payload = decode_token(raw)
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Invalid token type")
     return payload

@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.core.security import (
     create_access_token,
@@ -77,7 +77,7 @@ async def register_user(body: UserCreateRequest) -> UserResponse:
     response_model=TokenResponse,
     summary="Authenticate and receive JWT tokens",
 )
-async def login(body: UserLoginRequest) -> TokenResponse:
+async def login(body: UserLoginRequest, response: Response) -> TokenResponse:
     col = users_col()
     user = await col.find_one({"email": body.email})
     if not user or not verify_password(body.password, user["hashed_password"]):
@@ -95,11 +95,42 @@ async def login(body: UserLoginRequest) -> TokenResponse:
     )
     refresh_token = create_refresh_token(subject=user["user_id"])
 
+    # Set the access token as an HttpOnly cookie so JavaScript cannot read it.
+    # SameSite=strict blocks cross-origin requests (CSRF protection).
+    # Secure ensures the cookie is only sent over HTTPS in production.
+    is_prod = settings.is_production
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,                              # JS cannot access this cookie
+        secure=is_prod,                             # HTTPS only in production
+        samesite="strict",                          # blocks cross-origin requests
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/",
+    )
+
+    # Do not return the raw token in the body — the cookie is the auth mechanism.
+    # expires_in is safe to expose (it's just a duration, not a credential).
     return TokenResponse(
-        access_token=access_token,
+        access_token="",                            # omitted; token lives in cookie
         refresh_token=refresh_token,
         expires_in=settings.access_token_expire_minutes * 60,
     )
+
+
+@router.post("/logout", summary="Clear the auth cookie and end the session")
+async def logout(response: Response) -> dict:
+    # Overwrite the cookie with an empty value and zero max-age to delete it.
+    response.set_cookie(
+        key="access_token",
+        value="",
+        httponly=True,
+        secure=settings.is_production,
+        samesite="strict",
+        max_age=0,
+        path="/",
+    )
+    return {"detail": "Logged out"}
 
 
 @router.get(

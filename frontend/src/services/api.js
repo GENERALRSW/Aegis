@@ -10,24 +10,26 @@ const BASE_URL = import.meta.env.DEV
   ? ''   // Vite proxy handles it — use relative URLs
   : (import.meta.env.VITE_API_URL || '')
 
-// ─── Token management ─────────────────────────────────────────────────────────
-export const getToken  = ()      => localStorage.getItem('aegis_token')
-export const setToken  = (token) => localStorage.setItem('aegis_token', token)
-export const clearToken = ()     => localStorage.removeItem('aegis_token')
+// ─── Auth state ───────────────────────────────────────────────────────────────
+// The actual JWT lives in an HttpOnly cookie set by the backend — JavaScript
+// cannot read it (that's the security point). We keep a plain flag in
+// localStorage only to decide whether to show the login page on load.
+// Even if an attacker reads this flag via XSS, they cannot extract the token.
+export const getToken   = ()        => localStorage.getItem('aegis_authenticated')
+export const setToken   = ()        => localStorage.setItem('aegis_authenticated', '1')
+export const clearToken = ()        => localStorage.removeItem('aegis_authenticated')
 
 // ─── Core request ─────────────────────────────────────────────────────────────
 export const request = async (method, path, body = null, options = {}) => {
-  const token = getToken()
-
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   }
 
   const config = {
     method,
     headers,
+    credentials: 'include',   // send the HttpOnly cookie on every request
     ...(body ? { body: JSON.stringify(body) } : {}),
   }
 
@@ -62,10 +64,9 @@ export const del  = (path, opts)        => request('DELETE', path, null, opts)
 
 // ─── Multipart (CV frame upload) ──────────────────────────────────────────────
 export const postFormData = async (path, formData) => {
-  const token = getToken()
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',   // send the HttpOnly cookie
     body: formData,
   })
   if (res.status === 401) { clearToken(); window.location.href = '/login'; return }

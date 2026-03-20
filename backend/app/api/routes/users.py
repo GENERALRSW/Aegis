@@ -72,6 +72,7 @@ async def register_user(body: UserCreateRequest) -> UserResponse:
         "created_at": datetime.now(timezone.utc),
         "is_active": True,
     }
+
     await col.insert_one(doc)
     return UserResponse(**_serialize_user(doc))
 
@@ -158,7 +159,7 @@ async def login(body: UserLoginRequest, request: Request, response: Response) ->
     # Do not return the raw token in the body — the cookie is the auth mechanism.
     # expires_in is safe to expose (it's just a duration, not a credential).
     return TokenResponse(
-        access_token="",                            # omitted; token lives in cookie
+        access_token=access_token,   # ← restore this
         refresh_token=refresh_token,
         expires_in=settings.access_token_expire_minutes * 60,
     )

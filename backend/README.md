@@ -1,4 +1,4 @@
-# AEGIS — AI-Powered Surveillance Backend
+# AEGIS — AI-Powered Surveillance Frontend
 
 ```
  █████╗ ███████╗ ██████╗ ██╗███████╗

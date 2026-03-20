@@ -76,13 +76,14 @@ async def register_user(body: UserCreateRequest) -> UserResponse:
     return UserResponse(**_serialize_user(doc))
 
 
+_MAX_FAILED_ATTEMPTS = 5   # permanently lock after this many consecutive failures
+
+
 @router.post(
     "/login",
     response_model=TokenResponse,
     summary="Authenticate and receive JWT tokens",
 )
-_MAX_FAILED_ATTEMPTS = 5   # permanently lock after this many consecutive failures
-
 async def login(body: UserLoginRequest, request: Request, response: Response) -> TokenResponse:
     col = users_col()
     client_ip = request.client.host if request.client else "unknown"

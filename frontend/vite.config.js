@@ -8,7 +8,7 @@ export default defineConfig(({ command }) => ({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://aegis-backend-2-production.up.railway.app',
+        target: 'https://aegis-jam-production.up.railway.app',
         changeOrigin: true,
         secure: true,
       }

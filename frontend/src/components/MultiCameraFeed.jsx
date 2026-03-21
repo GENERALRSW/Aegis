@@ -14,10 +14,18 @@ const SEVERITY_COLORS = {
   critical: '#E24B4A',
 }
 
+const SKELETON_CONNECTIONS = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],
+  [11,23],[12,24],[23,24],
+  [23,25],[25,27],[24,26],[26,28],
+  [0,11],[0,12],
+]
+
 // ─── Single camera slot ──────────────────────────────────────────────────────
 function CameraSlot({ slotId, onEventDetected, onRemove }) {
   const videoRef    = useRef(null)
   const canvasRef   = useRef(null)
+  const overlayRef  = useRef(null)
   const streamRef   = useRef(null)
   const intervalRef = useRef(null)
   const sendingRef  = useRef(false)   // guard against overlapping requests
@@ -42,6 +50,59 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
     return canvas.toDataURL('image/jpeg', 0.7).split(',')[1]
   }, [])
 
+  const drawOverlay = useCallback((result) => {
+    const overlay = overlayRef.current
+    const video   = videoRef.current
+    if (!overlay || !video) return
+    overlay.width  = video.videoWidth  || 640
+    overlay.height = video.videoHeight || 480
+    const ctx = overlay.getContext('2d')
+    ctx.clearRect(0, 0, overlay.width, overlay.height)
+
+    const dets = result.detections || []
+    dets.forEach(detection => {
+      if (detection.bounding_box) {
+        const bbox  = detection.bounding_box
+        const color = detection.label?.toLowerCase().includes('weapon') ? '#FF0000' : '#FF8C00'
+        ctx.strokeStyle = color
+        ctx.lineWidth   = 2
+        ctx.strokeRect(bbox.x1, bbox.y1, bbox.width, bbox.height)
+
+        const label = `${detection.label} ${Math.round((detection.confidence || 0) * 100)}%`
+        ctx.font = '12px sans-serif'
+        const textW = ctx.measureText(label).width
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'
+        ctx.fillRect(bbox.x1, bbox.y1 - 18, textW + 6, 18)
+        ctx.fillStyle = color
+        ctx.fillText(label, bbox.x1 + 3, bbox.y1 - 4)
+      }
+
+      if (detection.keypoints) {
+        const kps = detection.keypoints
+        const w   = overlay.width
+        const h   = overlay.height
+        ctx.strokeStyle = '#FFFF00'
+        ctx.lineWidth   = 2
+        ctx.beginPath()
+        SKELETON_CONNECTIONS.forEach(([a, b]) => {
+          if (kps[a] && kps[b] && kps[a].visibility > 0.5 && kps[b].visibility > 0.5) {
+            ctx.moveTo(kps[a].x * w, kps[a].y * h)
+            ctx.lineTo(kps[b].x * w, kps[b].y * h)
+          }
+        })
+        ctx.stroke()
+        kps.forEach(kp => {
+          if (kp.visibility > 0.5) {
+            ctx.beginPath()
+            ctx.arc(kp.x * w, kp.y * h, 3, 0, Math.PI * 2)
+            ctx.fillStyle = '#FFFF00'
+            ctx.fill()
+          }
+        })
+      }
+    })
+  }, [])
+
   const sendFrame = useCallback(async (cameraId) => {
     if (sendingRef.current) return
     const frame_b64 = captureFrame()
@@ -56,6 +117,7 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
         location,
       })
       setDetections(result.detections || [])
+      drawOverlay(result)
       setLastEvent(result)
       setFrameCount(c => c + 1)
       if (result.severity === 'high' || result.severity === 'critical') {
@@ -67,7 +129,7 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
       sendingRef.current = false
       setSending(false)
     }
-  }, [captureFrame, location, onEventDetected, slotId])
+  }, [captureFrame, drawOverlay, location, onEventDetected, slotId])
 
   const startWebcam = async () => {
     setError('')
@@ -113,6 +175,10 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
     if (camera) {
       try { await updateCamera(camera.camera_id, { status: 'inactive' }) } catch {}
     }
+    if (overlayRef.current) {
+      const ctx = overlayRef.current.getContext('2d')
+      ctx.clearRect(0, 0, overlayRef.current.width, overlayRef.current.height)
+    }
     setStatus('idle')
     setCamera(null)
     setDetections([])
@@ -149,6 +215,11 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
       <div className="cs-video-wrap">
         <video ref={videoRef} className="cs-video" muted playsInline autoPlay />
         <canvas ref={canvasRef} style={{ display: 'none' }} />
+        <canvas ref={overlayRef} style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: '100%',
+          pointerEvents: 'none',
+        }} />
 
         {status === 'active' && detections.length > 0 && (
           <div className="cs-detections-overlay">

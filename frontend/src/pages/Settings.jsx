@@ -64,6 +64,10 @@ const FLAG_META = {
     sub:   'Match faces in camera feeds against registered restricted persons. Requires DeepFace.',
     warn:  'DPA-sensitive — ensure legal basis before enabling',
   },
+  authorized_persons: {
+    label: 'Authorized Personnel Check',
+    sub:   'Cross-check detected persons against the authorized staff database to prevent false intruder alerts for known personnel.',
+  },
   restricted_persons: {
     label: 'Restricted persons check',
     sub:   'Alert when a registered restricted person is detected in camera feeds.',

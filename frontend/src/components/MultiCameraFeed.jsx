@@ -54,53 +54,72 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
     const overlay = overlayRef.current
     const video   = videoRef.current
     if (!overlay || !video) return
-    overlay.width  = video.videoWidth  || 640
-    overlay.height = video.videoHeight || 480
+    const w = video.videoWidth  || 640
+    const h = video.videoHeight || 480
+    overlay.width  = w
+    overlay.height = h
     const ctx = overlay.getContext('2d')
-    ctx.clearRect(0, 0, overlay.width, overlay.height)
+    ctx.clearRect(0, 0, w, h)
 
-    const dets = result.detections || []
-    dets.forEach(detection => {
-      if (detection.bounding_box) {
-        const bbox  = detection.bounding_box
-        const color = detection.label?.toLowerCase().includes('weapon') ? '#FF0000' : '#FF8C00'
-        ctx.strokeStyle = color
-        ctx.lineWidth   = 2
-        ctx.strokeRect(bbox.x1, bbox.y1, bbox.width, bbox.height)
+    const COLORS = {
+      intruder:   '#E24B4A',
+      weapon:     '#FF6B00',
+      conflict:   '#F5C518',
+      authorized: '#22C55E',
+    }
 
-        const label = `${detection.label} ${Math.round((detection.confidence || 0) * 100)}%`
-        ctx.font = '12px sans-serif'
-        const textW = ctx.measureText(label).width
-        ctx.fillStyle = 'rgba(0,0,0,0.6)'
-        ctx.fillRect(bbox.x1, bbox.y1 - 18, textW + 6, 18)
-        ctx.fillStyle = color
-        ctx.fillText(label, bbox.x1 + 3, bbox.y1 - 4)
-      }
+    // Draw YOLO bounding boxes
+    for (const det of (result.detections || [])) {
+      const bb = det.bounding_box
+      if (!bb) continue
+      const color = COLORS[det.label] || '#4A9FE2'
+      ctx.strokeStyle = color
+      ctx.lineWidth   = 2
+      ctx.strokeRect(bb.x1, bb.y1, bb.width, bb.height)
+      const label = `${det.label} ${Math.round(det.confidence * 100)}%`
+      ctx.font = 'bold 12px monospace'
+      const tw = ctx.measureText(label).width
+      ctx.fillStyle = color + 'cc'
+      ctx.fillRect(bb.x1, bb.y1 - 18, tw + 8, 18)
+      ctx.fillStyle = '#fff'
+      ctx.fillText(label, bb.x1 + 4, bb.y1 - 4)
+    }
 
-      if (detection.keypoints) {
-        const kps = detection.keypoints
-        const w   = overlay.width
-        const h   = overlay.height
-        ctx.strokeStyle = '#FFFF00'
-        ctx.lineWidth   = 2
+    // Draw MediaPipe skeleton for conflict detections
+    for (const det of (result.detections || [])) {
+      if (det.label !== 'conflict' || !det.keypoints || !det.keypoints.length) continue
+      const kps = det.keypoints
+      ctx.strokeStyle = '#F5C518'
+      ctx.lineWidth = 2
+      for (const [a, b] of SKELETON_CONNECTIONS) {
+        const kpA = kps[a], kpB = kps[b]
+        if (!kpA || !kpB) continue
+        if ((kpA.visibility || 1) < 0.3 || (kpB.visibility || 1) < 0.3) continue
         ctx.beginPath()
-        SKELETON_CONNECTIONS.forEach(([a, b]) => {
-          if (kps[a] && kps[b] && kps[a].visibility > 0.5 && kps[b].visibility > 0.5) {
-            ctx.moveTo(kps[a].x * w, kps[a].y * h)
-            ctx.lineTo(kps[b].x * w, kps[b].y * h)
-          }
-        })
+        ctx.moveTo(kpA.x * w, kpA.y * h)
+        ctx.lineTo(kpB.x * w, kpB.y * h)
         ctx.stroke()
-        kps.forEach(kp => {
-          if (kp.visibility > 0.5) {
-            ctx.beginPath()
-            ctx.arc(kp.x * w, kp.y * h, 3, 0, Math.PI * 2)
-            ctx.fillStyle = '#FFFF00'
-            ctx.fill()
-          }
-        })
       }
-    })
+      ctx.fillStyle = '#F5C518'
+      for (const kp of kps) {
+        if ((kp.visibility || 1) < 0.3) continue
+        ctx.beginPath()
+        ctx.arc(kp.x * w, kp.y * h, 3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+
+    // Draw green "AUTHORIZED" banners for recognized persons
+    for (const auth of (result.authorized_identities || [])) {
+      ctx.font = 'bold 11px monospace'
+      const label = `✓ ${auth.person_name} — ${auth.category || 'authorized'}`
+      const tw = ctx.measureText(label).width
+      const yOffset = (result.authorized_identities.indexOf(auth)) * 22
+      ctx.fillStyle = '#22C55Ecc'
+      ctx.fillRect(4, 4 + yOffset, tw + 10, 20)
+      ctx.fillStyle = '#fff'
+      ctx.fillText(label, 9, 18 + yOffset)
+    }
   }, [])
 
   const sendFrame = useCallback(async (cameraId) => {
@@ -218,18 +237,37 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
         <canvas ref={overlayRef} style={{
           position: 'absolute', top: 0, left: 0,
           width: '100%', height: '100%',
-          pointerEvents: 'none',
+          pointerEvents: 'none', zIndex: 2,
         }} />
 
-        {status === 'active' && detections.length > 0 && (
+        {status === 'active' && (
           <div className="cs-detections-overlay">
-            {detections.slice(0, 2).map((d, i) => (
-              <div key={i} className="cs-det-pill"
-                style={{ background: `${riskColor}22`, borderColor: riskColor }}>
-                <span style={{ color: riskColor }}>{d.label}</span>
-                <span className="cs-det-conf">{Math.round((d.confidence || 0) * 100)}%</span>
+            {(lastEvent?.authorized_identities || []).slice(0,2).map((auth, i) => (
+              <div key={`auth-${i}`} className="cs-det-pill"
+                style={{ background: '#22C55E22', borderColor: '#22C55E' }}>
+                <span style={{ color: '#22C55E' }}>✓ {auth.person_name}</span>
+                <span className="cs-det-conf">{Math.round(auth.confidence * 100)}%</span>
               </div>
             ))}
+            {(lastEvent?.security_alerts || []).slice(0,1).map((alert, i) => (
+              <div key={`alert-${i}`} className="cs-det-pill"
+                style={{ background: '#E24B4A22', borderColor: '#E24B4A' }}>
+                <span style={{ color: '#E24B4A' }}>⚠ {alert.person_name}</span>
+                <span className="cs-det-conf">{alert.alert_type.replace(/_/g,' ')}</span>
+              </div>
+            ))}
+            {(lastEvent?.unidentified_count || 0) > 0 && (
+              <div className="cs-det-pill"
+                style={{ background: `${riskColor}22`, borderColor: riskColor }}>
+                <span style={{ color: riskColor }}>{lastEvent.unidentified_count} unidentified</span>
+              </div>
+            )}
+            {(lastEvent?.weapon_count || 0) > 0 && (
+              <div className="cs-det-pill"
+                style={{ background: '#FF6B0022', borderColor: '#FF6B00' }}>
+                <span style={{ color: '#FF6B00' }}>⚠ {lastEvent.weapon_count} weapon</span>
+              </div>
+            )}
           </div>
         )}
 

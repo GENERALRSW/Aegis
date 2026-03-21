@@ -4,6 +4,8 @@ import {
   markAsFound, updateProfilePhoto,
   getRestrictedPersons, registerRestrictedWithPhoto,
   registerRestrictedPerson, removeRestrictedPerson, updateRestrictedPhoto,
+  getAuthorizedPersons, registerAuthorizedWithPhoto, registerAuthorizedPerson,
+  removeAuthorizedPerson, updateAuthorizedPhoto,
 } from '../services/missingPersonsService'
 import '../components/SharedStyles.css'
 import './MissingPersons.css'
@@ -342,6 +344,77 @@ function RestrictedCard({ person, onRemove, onUpdatePhoto }) {
   )
 }
 
+// ─── Authorized Card ──────────────────────────────────────────────────────────
+function AuthorizedCard({ person, onRemove, onUpdatePhoto }) {
+  const photoInputRef = useRef(null)
+  const isActive = person.active !== false
+  return (
+    <div className="card mp-card">
+      <div className="mp-card-top">
+        <div className="mp-avatar-wrap">
+          <div className="mp-avatar"
+            style={{background:'rgba(34,197,94,0.15)',color:'#22C55E',cursor:'pointer'}}
+            onClick={() => photoInputRef.current?.click()} title="Click to add/update photo">
+            {person.has_face_encoding ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" stroke="#22C55E" strokeWidth="1.8"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#22C55E" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            ) : person.name?.slice(0,2).toUpperCase() || 'AP'}
+          </div>
+          {person.has_face_encoding
+            ? <span className="mp-face-badge" style={{color:'#22C55E',borderColor:'rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.08)'}}>Face ✓</span>
+            : <span className="mp-face-badge" style={{color:'var(--muted)',borderColor:'var(--border)',background:'var(--elevated)'}}>No photo</span>
+          }
+          <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+            style={{display:'none'}} onChange={e => onUpdatePhoto(person.person_id, e.target.files[0])}/>
+        </div>
+        <div className="mp-card-info">
+          <div className="mp-card-name">{person.name}</div>
+          <div className="mp-card-desc">{person.department}{person.role ? ` · ${person.role}` : ''}</div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:5,flexShrink:0}}>
+          <span className="af-badge" style={{
+            color: isActive ? '#22C55E' : '#666',
+            background: isActive ? 'rgba(34,197,94,0.12)' : 'rgba(102,102,102,0.12)',
+          }}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+          <button className="mp-icon-btn mp-icon-btn-danger" onClick={() => onRemove(person.person_id)} title="Revoke access">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="mp-card-body">
+        <div className="mp-detail-row">
+          <span className="mp-detail-key">Access level</span>
+          <span className="mp-detail-val" style={{textTransform:'capitalize'}}>{person.access_level || 'standard'}</span>
+        </div>
+        {person.registered_at && (
+          <div className="mp-detail-row">
+            <span className="mp-detail-key">Registered</span>
+            <span className="mp-detail-val">{new Date(person.registered_at).toLocaleDateString()}</span>
+          </div>
+        )}
+      </div>
+      <div className="mp-card-actions">
+        {!person.has_face_encoding && (
+          <button className="btn" style={{flex:1,fontSize:11}} onClick={() => photoInputRef.current?.click()}>
+            + Add photo
+          </button>
+        )}
+        <button className="btn"
+          style={{flex:1,fontSize:11,borderColor:'rgba(226,75,74,0.3)',color:'#E24B4A',background:'rgba(226,75,74,0.06)'}}
+          onClick={() => onRemove(person.person_id)}>
+          Revoke
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Face Search Panel ────────────────────────────────────────────────────────
 function FaceSearchPanel({ profiles, restricted }) {
   const [searchFile, setSearchFile] = useState(null)
@@ -451,6 +524,7 @@ export default function MissingPersons() {
   const [tab, setTab]               = useState('missing')
   const [profiles, setProfiles]     = useState([])
   const [restricted, setRestricted] = useState([])
+  const [authorized, setAuthorized] = useState([])
   const [loading, setLoading]       = useState(true)
   const [showModal, setShowModal]   = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -464,13 +538,16 @@ export default function MissingPersons() {
   const [photoFile, setPhotoFile] = useState(null)
   const [restrictedForm, setRestrictedForm]         = useState({ name:'', reason:'' })
   const [restrictedPhotoFile, setRestrictedPhotoFile] = useState(null)
+  const [authorizedForm, setAuthorizedForm]         = useState({ name:'', department:'', role:'staff', access_level:'standard' })
+  const [authorizedPhotoFile, setAuthorizedPhotoFile] = useState(null)
 
   const load = async () => {
     setLoading(true)
     try {
-      const [p, r] = await Promise.all([getAllProfiles(), getRestrictedPersons()])
+      const [p, r, a] = await Promise.all([getAllProfiles(), getRestrictedPersons(), getAuthorizedPersons()])
       setProfiles(Array.isArray(p) ? p : [])
       setRestricted(Array.isArray(r) ? r : [])
+      setAuthorized(Array.isArray(a) ? a : [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -566,37 +643,71 @@ export default function MissingPersons() {
     catch (err) { console.error(err) }
   }
 
+  const handleCreateAuthorized = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setError('')
+    try {
+      if (authorizedPhotoFile) {
+        await registerAuthorizedWithPhoto(authorizedPhotoFile, authorizedForm)
+      } else {
+        await registerAuthorizedPerson(authorizedForm)
+      }
+      await load()
+      setShowModal(false)
+      setAuthorizedForm({ name:'', department:'', role:'staff', access_level:'standard' })
+      setAuthorizedPhotoFile(null)
+    } catch (err) { setError(err.message) }
+    finally { setSubmitting(false) }
+  }
+
+  const handleRemoveAuthorized = async (personId) => {
+    try {
+      await removeAuthorizedPerson(personId)
+      setAuthorized(prev => prev.filter(p => p.person_id !== personId))
+    } catch (err) { console.error(err) }
+  }
+
+  const handleUpdateAuthorizedPhoto = async (personId, file) => {
+    if (!file) return
+    try { await updateAuthorizedPhoto(personId, file); await load() }
+    catch (err) { console.error(err) }
+  }
+
   const missing     = profiles.filter(p => p.category === 'missing')
   const criminal    = profiles.filter(p => p.category === 'criminal')
   const activeCount = profiles.filter(p => ['active','matched'].includes(p.status)).length
 
   const TABS = [
-    { id:'missing',    label:'Missing Persons',   count: missing.length    },
-    { id:'criminal',   label:'Criminal Profiles', count: criminal.length   },
-    { id:'restricted', label:'Restricted Persons',count: restricted.length },
+    { id:'missing',    label:'Missing / Criminal', count: missing.length + criminal.length },
+    { id:'restricted', label:'Restricted',          count: restricted.length               },
+    { id:'authorized', label:'Authorized Personnel',count: authorized.length               },
   ]
 
-  const currentProfiles = tab === 'missing' ? missing : tab === 'criminal' ? criminal : []
+  const currentProfiles = tab === 'missing' ? [...missing, ...criminal] : []
 
   return (
     <div className="page-wrapper">
       <div className="page-header mp-header">
         <div>
           <h1 className="page-title">
-            {tab === 'missing' ? 'Missing Persons' : tab === 'criminal' ? 'Criminal Profiles' : 'Restricted Persons'}
+            {tab === 'missing' ? 'Missing / Criminal Profiles' : tab === 'restricted' ? 'Restricted Persons' : 'Authorized Personnel'}
           </h1>
           <p className="page-subtitle">
-            {activeCount} active search{activeCount !== 1 ? 'es' : ''} · {restricted.filter(r=>r.active).length} restricted persons
+            {activeCount} active search{activeCount !== 1 ? 'es' : ''} · {restricted.filter(r=>r.active).length} restricted · {authorized.filter(a=>a.active!==false).length} authorized
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          + {tab === 'restricted' ? 'Add Restricted Person' : 'New Profile'}
+          + {tab === 'restricted' ? 'Add Restricted Person' : tab === 'authorized' ? 'Register Authorized' : 'New Profile'}
         </button>
       </div>
 
       <div className="mp-tabs">
         {TABS.map(t => (
-          <button key={t.id} className={`mp-tab ${tab===t.id?'active':''}`} onClick={() => setTab(t.id)}>
+          <button key={t.id}
+            className={`mp-tab ${tab===t.id?'active':''}`}
+            onClick={() => setTab(t.id)}
+            style={t.id === 'authorized' && tab === t.id ? { borderBottomColor:'#22C55E', color:'#22C55E' } : {}}>
             {t.label}
             <span className="mp-tab-count">{t.count}</span>
           </button>
@@ -604,7 +715,30 @@ export default function MissingPersons() {
       </div>
 
       <div className="page-content">
-        {tab === 'restricted' ? (
+        {tab === 'authorized' ? (
+          <div className="mp-grid">
+            <div className="mp-col">
+              <div className="mp-col-title" style={{color:'#22C55E'}}>Authorized personnel</div>
+              {loading ? (
+                <div style={{fontSize:12,color:'var(--muted)',padding:'20px 0'}}>Loading...</div>
+              ) : authorized.length === 0 ? (
+                <div style={{fontSize:12,color:'var(--muted)',padding:'20px 0'}}>No authorized persons registered.</div>
+              ) : (
+                <div className="mp-profiles">
+                  {authorized.map(p => (
+                    <AuthorizedCard key={p.person_id} person={p}
+                      onRemove={handleRemoveAuthorized}
+                      onUpdatePhoto={handleUpdateAuthorizedPhoto}/>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mp-col">
+              <div className="mp-col-title">Face search</div>
+              <FaceSearchPanel profiles={profiles} restricted={restricted}/>
+            </div>
+          </div>
+        ) : tab === 'restricted' ? (
           <div className="mp-grid">
             <div className="mp-col">
               <div className="mp-col-title">Active restrictions</div>
@@ -630,15 +764,11 @@ export default function MissingPersons() {
         ) : (
           <div className="mp-grid">
             <div className="mp-col">
-              <div className="mp-col-title">
-                {tab === 'missing' ? 'Active missing persons' : 'Criminal profiles'}
-              </div>
+              <div className="mp-col-title">Active missing &amp; criminal profiles</div>
               {loading ? (
                 <div style={{fontSize:12,color:'var(--muted)',padding:'20px 0'}}>Loading profiles...</div>
               ) : currentProfiles.length === 0 ? (
-                <div style={{fontSize:12,color:'var(--muted)',padding:'20px 0'}}>
-                  No {tab === 'missing' ? 'missing person' : 'criminal'} profiles registered.
-                </div>
+                <div style={{fontSize:12,color:'var(--muted)',padding:'20px 0'}}>No profiles registered.</div>
               ) : (
                 <div className="mp-profiles">
                   {currentProfiles.map(p => (
@@ -666,12 +796,66 @@ export default function MissingPersons() {
             <div className="id-card-header">
               <span className="card-title">
                 {tab === 'restricted' ? 'Register restricted person'
-                  : tab === 'criminal' ? 'New criminal profile'
+                  : tab === 'authorized' ? 'Register authorized person'
                   : 'New missing person profile'}
               </span>
               <button className="id-back" onClick={() => setShowModal(false)}>✕</button>
             </div>
-            {tab === 'restricted' ? (
+            {tab === 'authorized' ? (
+              <form className="mp-modal-body" onSubmit={handleCreateAuthorized}>
+                <div className="auth-field">
+                  <label className="auth-label">Full name</label>
+                  <input className="auth-input" style={{paddingLeft:14,height:40}}
+                    placeholder="e.g. Jane Smith" value={authorizedForm.name}
+                    onChange={e => setAuthorizedForm({...authorizedForm,name:e.target.value})} required/>
+                </div>
+                <div className="auth-field">
+                  <label className="auth-label">Department</label>
+                  <input className="auth-input" style={{paddingLeft:14,height:40}}
+                    placeholder="e.g. Engineering, Security, Admin"
+                    value={authorizedForm.department}
+                    onChange={e => setAuthorizedForm({...authorizedForm,department:e.target.value})} required/>
+                </div>
+                <div className="auth-field">
+                  <label className="auth-label">Role</label>
+                  <select className="auth-input" style={{paddingLeft:14,height:40}}
+                    value={authorizedForm.role}
+                    onChange={e => setAuthorizedForm({...authorizedForm,role:e.target.value})}>
+                    <option value="staff">Staff</option>
+                    <option value="contractor">Contractor</option>
+                    <option value="faculty">Faculty</option>
+                  </select>
+                </div>
+                <div className="auth-field">
+                  <label className="auth-label">Access level</label>
+                  <select className="auth-input" style={{paddingLeft:14,height:40}}
+                    value={authorizedForm.access_level}
+                    onChange={e => setAuthorizedForm({...authorizedForm,access_level:e.target.value})}>
+                    <option value="standard">Standard</option>
+                    <option value="restricted">Restricted areas</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="auth-field">
+                  <label className="auth-label">
+                    Face photo
+                    <span style={{fontSize:10,color:'#22C55E',marginLeft:6}}>Strongly recommended</span>
+                  </label>
+                  <ImageUpload onFileChange={setAuthorizedPhotoFile} label="Upload face photo for CV matching"/>
+                  {authorizedPhotoFile && (
+                    <div style={{fontSize:10,color:'#22C55E',marginTop:4,fontFamily:'var(--font-sans)'}}>
+                      ✓ Photo ready — will prevent false intruder alerts
+                    </div>
+                  )}
+                </div>
+                {error && <div className="mp-form-error">{error}</div>}
+                <button type="submit" className="btn btn-primary"
+                  style={{width:'100%',marginTop:8,height:42,background:'rgba(34,197,94,0.15)',borderColor:'rgba(34,197,94,0.4)',color:'#22C55E'}}
+                  disabled={submitting}>
+                  {submitting ? 'Registering...' : 'Register & authorize access'}
+                </button>
+              </form>
+            ) : tab === 'restricted' ? (
               <form className="mp-modal-body" onSubmit={handleCreateRestricted}>
                 <div className="auth-field">
                   <label className="auth-label">Full name</label>

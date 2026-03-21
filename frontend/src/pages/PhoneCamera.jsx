@@ -7,6 +7,13 @@ import './PhoneCamera.css'
 
 const FRAME_INTERVAL_MS = 2000
 
+const SKELETON_CONNECTIONS = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],
+  [11,23],[12,24],[23,24],
+  [23,25],[25,27],[24,26],[26,28],
+  [0,11],[0,12],
+]
+
 const SEVERITY_COLORS = {
   low:      '#22C55E',
   medium:   '#F5C518',
@@ -17,6 +24,7 @@ const SEVERITY_COLORS = {
 export default function PhoneCamera() {
   const videoRef    = useRef(null)
   const canvasRef   = useRef(null)
+  const overlayRef  = useRef(null)
   const streamRef   = useRef(null)
   const intervalRef = useRef(null)
 
@@ -103,12 +111,86 @@ export default function PhoneCamera() {
     if (camera) {
       try { await updateCamera(camera.camera_id, { status: 'inactive' }) } catch {}
     }
+    if (overlayRef.current) {
+      const ctx = overlayRef.current.getContext('2d')
+      ctx.clearRect(0, 0, overlayRef.current.width, overlayRef.current.height)
+    }
     setStatus('idle')
     setCamera(null)
     setDetections([])
     setLastEvent(null)
     setFrameCount(0)
   }
+
+  // ─── Overlay drawing ─────────────────────────────────────────────────────────
+  const drawOverlay = useCallback((result) => {
+    const overlay = overlayRef.current
+    const video   = videoRef.current
+    if (!overlay || !video) return
+    const w = video.videoWidth  || 1280
+    const h = video.videoHeight || 720
+    overlay.width  = w
+    overlay.height = h
+    const ctx = overlay.getContext('2d')
+    ctx.clearRect(0, 0, w, h)
+
+    const COLORS = {
+      intruder:   '#E24B4A',
+      weapon:     '#FF6B00',
+      conflict:   '#F5C518',
+      authorized: '#22C55E',
+    }
+
+    for (const det of (result.detections || [])) {
+      const bb = det.bounding_box
+      if (!bb) continue
+      const color = COLORS[det.label] || '#4A9FE2'
+      ctx.strokeStyle = color
+      ctx.lineWidth   = 2
+      ctx.strokeRect(bb.x1, bb.y1, bb.width, bb.height)
+      const label = `${det.label} ${Math.round(det.confidence * 100)}%`
+      ctx.font = 'bold 12px monospace'
+      const tw = ctx.measureText(label).width
+      ctx.fillStyle = color + 'cc'
+      ctx.fillRect(bb.x1, bb.y1 - 18, tw + 8, 18)
+      ctx.fillStyle = '#fff'
+      ctx.fillText(label, bb.x1 + 4, bb.y1 - 4)
+    }
+
+    for (const det of (result.detections || [])) {
+      if (det.label !== 'conflict' || !det.keypoints || !det.keypoints.length) continue
+      const kps = det.keypoints
+      ctx.strokeStyle = '#F5C518'
+      ctx.lineWidth = 2
+      for (const [a, b] of SKELETON_CONNECTIONS) {
+        const kpA = kps[a], kpB = kps[b]
+        if (!kpA || !kpB) continue
+        if ((kpA.visibility || 1) < 0.3 || (kpB.visibility || 1) < 0.3) continue
+        ctx.beginPath()
+        ctx.moveTo(kpA.x * w, kpA.y * h)
+        ctx.lineTo(kpB.x * w, kpB.y * h)
+        ctx.stroke()
+      }
+      ctx.fillStyle = '#F5C518'
+      for (const kp of kps) {
+        if ((kp.visibility || 1) < 0.3) continue
+        ctx.beginPath()
+        ctx.arc(kp.x * w, kp.y * h, 3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+
+    for (const auth of (result.authorized_identities || [])) {
+      ctx.font = 'bold 11px monospace'
+      const label = `✓ ${auth.person_name} — ${auth.category || 'authorized'}`
+      const tw = ctx.measureText(label).width
+      const yOffset = (result.authorized_identities.indexOf(auth)) * 22
+      ctx.fillStyle = '#22C55Ecc'
+      ctx.fillRect(4, 4 + yOffset, tw + 10, 20)
+      ctx.fillStyle = '#fff'
+      ctx.fillText(label, 9, 18 + yOffset)
+    }
+  }, [])
 
   // ─── Frame capture ────────────────────────────────────────────────────────────
   const captureFrame = useCallback(() => {
@@ -130,6 +212,7 @@ export default function PhoneCamera() {
     try {
       const result = await detectJSON({ camera_id: cameraId, frame_b64, source_type: 'phone', location })
       setDetections(result.detections || [])
+      drawOverlay(result)
       setLastEvent(result)
       setFrameCount(c => c + 1)
     } catch (err) {
@@ -137,7 +220,7 @@ export default function PhoneCamera() {
     } finally {
       setSending(false)
     }
-  }, [captureFrame, location, sending])
+  }, [captureFrame, drawOverlay, location, sending])
 
   const startFrameLoop = useCallback((cameraId) => {
     clearInterval(intervalRef.current)
@@ -205,6 +288,11 @@ export default function PhoneCamera() {
       <div className="pc-video-wrap">
         <video ref={videoRef} className="pc-video" muted playsInline autoPlay />
         <canvas ref={canvasRef} style={{ display: 'none' }} />
+        <canvas ref={overlayRef} style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: 2,
+        }} />
 
         {status === 'idle' && (
           <div className="pc-placeholder">
@@ -229,14 +317,38 @@ export default function PhoneCamera() {
         )}
 
         {/* Detection pills overlay */}
-        {status === 'active' && detections.length > 0 && (
+        {status === 'active' && (
           <div className="pc-det-overlay">
-            {detections.slice(0, 3).map((d, i) => (
-              <div key={i} className="pc-det-pill"
-                style={{ borderColor: riskColor, color: riskColor, background: `${riskColor}18` }}>
-                {d.label} · {Math.round((d.confidence || 0) * 100)}%
+            {(lastEvent?.authorized_identities || []).map((auth, i) => (
+              <div key={`auth-${i}`} className="pc-det-pill"
+                style={{ borderColor: '#22C55E', color: '#22C55E', background: '#22C55E18' }}>
+                ✓ {auth.person_name} · {auth.category || 'authorized'}
               </div>
             ))}
+            {(lastEvent?.security_alerts || []).map((alert, i) => (
+              <div key={`alert-${i}`} className="pc-det-pill"
+                style={{ borderColor: '#E24B4A', color: '#E24B4A', background: '#E24B4A18' }}>
+                ⚠ {alert.person_name} · {alert.alert_type.replace(/_/g, ' ')}
+              </div>
+            ))}
+            {(lastEvent?.unidentified_count || 0) > 0 && (
+              <div className="pc-det-pill"
+                style={{ borderColor: riskColor, color: riskColor, background: `${riskColor}18` }}>
+                {lastEvent.unidentified_count} UNIDENTIFIED
+              </div>
+            )}
+            {(lastEvent?.weapon_count || 0) > 0 && (
+              <div className="pc-det-pill"
+                style={{ borderColor: '#FF6B00', color: '#FF6B00', background: '#FF6B0018' }}>
+                ⚠ {lastEvent.weapon_count} WEAPON{lastEvent.weapon_count > 1 ? 'S' : ''}
+              </div>
+            )}
+            {lastEvent?.conflict_detected && (
+              <div className="pc-det-pill"
+                style={{ borderColor: '#F5C518', color: '#F5C518', background: '#F5C51818' }}>
+                CONFLICT POSTURE
+              </div>
+            )}
           </div>
         )}
 
@@ -266,7 +378,8 @@ export default function PhoneCamera() {
         <div className="pc-stats">
           {[
             ['Frames sent', frameCount, null],
-            ['Detections', detections.length, null],
+            ['Authorized', (lastEvent?.authorized_identities || []).length, '#22C55E'],
+            ['Unidentified', lastEvent?.unidentified_count ?? '—', riskColor],
             ['Risk score', lastEvent?.risk_score ?? '—', riskColor],
             ['Severity', lastEvent?.severity ?? '—', riskColor],
           ].map(([label, value, color]) => (

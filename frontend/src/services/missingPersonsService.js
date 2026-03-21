@@ -102,3 +102,30 @@ export const getSecurityAuditLog = (params = {}) => {
 }
 
 export const acknowledgeAuditEntry = (logId) => put(`/api/security/audit/${logId}/acknowledge`)
+
+// ─── Authorized persons (/api/security/authorized) ────────────────────────────
+
+export const getAuthorizedPersons = (params = {}) => {
+  const q = new URLSearchParams({ active_only: true, ...params }).toString()
+  return get(`/api/security/authorized?${q}`)
+}
+
+export const registerAuthorizedPerson = (data) => post('/api/security/authorized', data)
+
+export const registerAuthorizedWithPhoto = (photoFile, fields) => {
+  const form = new FormData()
+  form.append('photo',        photoFile)
+  form.append('name',         fields.name)
+  form.append('department',   fields.department)
+  form.append('role',         fields.role || 'staff')
+  form.append('access_level', fields.access_level || 'standard')
+  return postForm('/api/security/authorized/upload', form)
+}
+
+export const updateAuthorizedPhoto = (personId, photoFile) => {
+  const form = new FormData()
+  form.append('photo', photoFile)
+  return putForm(`/api/security/authorized/${personId}/photo`, form)
+}
+
+export const removeAuthorizedPerson = (personId) => del(`/api/security/authorized/${personId}`)

@@ -52,10 +52,22 @@ export default function IncidentDetail() {
   if (loading) return <div className="page-wrapper"><div style={{padding:40,color:'var(--muted)',fontSize:13}}>Loading incident...</div></div>
   if (!event)  return <div className="page-wrapper"><div style={{padding:40,color:'var(--muted)',fontSize:13}}>Incident not found.</div></div>
 
-  const confidence = Math.round((event.confidence || 0) * 100)
-  const eventType  = event.event_type || 'unknown'
-  const detections = event.detections || []
-  const time       = event.created_at ? new Date(event.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—'
+  const confidence       = Math.round((event.confidence || 0) * 100)
+  const eventType        = event.event_type || 'unknown'
+  const detections       = event.detections || []
+  const time             = event.created_at ? new Date(event.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—'
+  const securityAlerts   = event.security_alerts || []
+  const authorizedIds    = event.authorized_identities || []
+  const visitorSummaries = event.visitor_summaries || []
+  const allIdentities    = [...securityAlerts, ...authorizedIds, ...visitorSummaries]
+
+  const IDENTITY_CLASS_STYLE = {
+    authorized:           { color: 'var(--online)',   bg: 'rgba(34,197,94,0.12)',   label: 'Authorized' },
+    visitor:              { color: 'var(--muted)',    bg: 'rgba(102,102,102,0.12)', label: 'Visitor' },
+    intruder:             { color: 'var(--weapon)',   bg: 'rgba(226,75,74,0.12)',   label: 'Intruder' },
+    unidentified_intruder:{ color: 'var(--weapon)',   bg: 'rgba(226,75,74,0.12)',   label: 'Intruder' },
+    missing_person_match: { color: '#F59E0B',          bg: 'rgba(245,158,11,0.12)', label: 'Missing Person' },
+  }
 
   return (
     <div className="page-wrapper">
@@ -119,6 +131,52 @@ export default function IncidentDetail() {
                 <span>Confidence: <strong style={{color: confidence>=80?'#E24B4A':confidence>=60?'#F5C518':'#4A9FE2'}}>{confidence}%</strong></span>
               </div>
             </div>
+
+            {allIdentities.length > 0 && (
+              <div className="card">
+                <div className="id-card-header"><span className="card-title">Identity analysis</span></div>
+                {event.fr_operational === false && (
+                  <div style={{margin:'8px 0 12px',padding:'8px 12px',background:'rgba(245,197,24,0.08)',border:'1px solid rgba(245,197,24,0.2)',borderRadius:'var(--radius-sm)',fontSize:11,color:'#F5C518',fontFamily:'var(--font-sans)'}}>
+                    ⚠ Facial recognition was offline for this detection — classification based on behaviour only
+                  </div>
+                )}
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {allIdentities.map((entry, i) => {
+                    const cls = entry.identity_classification || (entry.alert_type === 'authorized_person' ? 'authorized' : entry.alert_type === 'visitor' ? 'visitor' : 'intruder')
+                    const style = IDENTITY_CLASS_STYLE[cls] || IDENTITY_CLASS_STYLE.intruder
+                    const matchType = entry.match_type || 'none'
+                    const matchLabel = matchType === 'face' ? 'FACE MATCH' : matchType === 'gait' ? 'GAIT MATCH' : matchType === 'combined' ? 'COMBINED' : null
+                    return (
+                      <div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',background:'var(--elevated)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)'}}>
+                        <span style={{padding:'2px 8px',borderRadius:4,fontSize:10,fontWeight:600,background:style.bg,color:style.color,whiteSpace:'nowrap',fontFamily:'var(--font-mono)'}}>
+                          {style.label}
+                        </span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:'var(--text)',fontFamily:'var(--font-sans)',fontWeight:500}}>{entry.person_name || 'Unknown'}</div>
+                          <div style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-sans)',marginTop:2,textTransform:'capitalize'}}>{entry.alert_type?.replace(/_/g,' ')}</div>
+                          <div style={{display:'flex',gap:8,marginTop:5,flexWrap:'wrap'}}>
+                            {entry.face_confidence != null && (
+                              <span style={{fontSize:10,color:'var(--text-sub)',fontFamily:'var(--font-sans)'}}>Face: {Math.round(entry.face_confidence*100)}%</span>
+                            )}
+                            {entry.gait_confidence != null && (
+                              <span style={{fontSize:10,color:'var(--text-sub)',fontFamily:'var(--font-sans)'}}>Gait: {Math.round(entry.gait_confidence*100)}%</span>
+                            )}
+                            {entry.fused_confidence != null && (
+                              <span style={{fontSize:10,color:'var(--text)',fontWeight:600,fontFamily:'var(--font-sans)'}}>Combined: {Math.round(entry.fused_confidence*100)}%</span>
+                            )}
+                          </div>
+                        </div>
+                        {matchLabel && (
+                          <span style={{padding:'2px 6px',borderRadius:4,fontSize:9,fontWeight:700,background:'var(--dim)',color:'var(--text-sub)',whiteSpace:'nowrap',fontFamily:'var(--font-mono)'}}>
+                            {matchLabel}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="card">
               <div className="id-card-header"><span className="card-title">Action history</span></div>

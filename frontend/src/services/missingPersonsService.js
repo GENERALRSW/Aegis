@@ -128,4 +128,10 @@ export const updateAuthorizedPhoto = (personId, photoFile) => {
   return putForm(`/api/security/authorized/${personId}/photo`, form)
 }
 
+export const addAuthorizedPersonPhoto = (personId, photoFile) => {
+  const form = new FormData()
+  form.append('photo', photoFile)
+  return postForm(`/api/security/authorized/${personId}/photos`, form)
+}
+
 export const removeAuthorizedPerson = (personId) => del(`/api/security/authorized/${personId}`)

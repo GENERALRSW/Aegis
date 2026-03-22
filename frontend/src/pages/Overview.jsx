@@ -17,7 +17,7 @@ export default function Overview() {
   const [cameras, setCameras]         = useState([])
   const [alerts, setAlerts]           = useState([])
   const [missingProfiles, setMissing] = useState([])
-  const [stats, setStats]             = useState({ total:0, weapon:0, conflict:0, intruder:0 })
+  const [stats, setStats]             = useState({ total:0, weapon:0, conflict:0, intruder:0, visitor:0 })
   const [loading, setLoading]         = useState(true)
   const [now, setNow]                 = useState(new Date())
 
@@ -37,7 +37,8 @@ export default function Overview() {
       setCameras(Array.isArray(cams) ? cams : [])
       setAlerts(Array.isArray(allAlerts) ? allAlerts : [])
       setMissing(Array.isArray(profiles) ? profiles : [])
-      setStats(todayStats || { total:0, weapon:0, conflict:0, intruder:0 })
+      const ts = todayStats || {}
+      setStats({ total: ts.total||0, weapon: ts.weapon||0, conflict: ts.conflict||0, intruder: ts.intruder||0, visitor: ts.visitor_count||0 })
     } catch (err) {
       console.error('Overview load error:', err)
     } finally {
@@ -92,6 +93,11 @@ export default function Overview() {
               {loading ? '—' : <>{onlineCams.length}<span className="stat-denom">/{cameras.length}</span></>}
             </div>
             <div className="stat-card-sub" style={{color:'var(--online)'}}>{offlineCams.length} offline</div>
+          </div>
+          <div className="ov-glass-chip stat-card">
+            <div className="stat-card-label">Visitors today</div>
+            <div className="stat-card-val">{loading ? '—' : stats.visitor}</div>
+            <div className="stat-card-sub" style={{color:'var(--muted)'}}>Non-suspicious unknown</div>
           </div>
           <div className="ov-glass-chip stat-card">
             <div className="stat-card-label">Acting missing profiles</div>

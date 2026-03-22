@@ -5,7 +5,7 @@ import {
   getRestrictedPersons, registerRestrictedWithPhoto,
   registerRestrictedPerson, removeRestrictedPerson, updateRestrictedPhoto,
   getAuthorizedPersons, registerAuthorizedWithPhoto, registerAuthorizedPerson,
-  removeAuthorizedPerson, updateAuthorizedPhoto,
+  removeAuthorizedPerson, updateAuthorizedPhoto, addAuthorizedPersonPhoto,
 } from '../services/missingPersonsService'
 import '../components/SharedStyles.css'
 import './MissingPersons.css'
@@ -345,16 +345,18 @@ function RestrictedCard({ person, onRemove, onUpdatePhoto }) {
 }
 
 // ─── Authorized Card ──────────────────────────────────────────────────────────
-function AuthorizedCard({ person, onRemove, onUpdatePhoto }) {
-  const photoInputRef = useRef(null)
-  const isActive = person.active !== false
+function AuthorizedCard({ person, onRemove, onUpdatePhoto, onAddPhoto }) {
+  const photoInputRef    = useRef(null)
+  const addPhotoInputRef = useRef(null)
+  const isActive     = person.active !== false
+  const embedCount   = person.embedding_count ?? (person.has_face_encoding ? 1 : 0)
   return (
     <div className="card mp-card">
       <div className="mp-card-top">
         <div className="mp-avatar-wrap">
           <div className="mp-avatar"
             style={{background:'rgba(34,197,94,0.15)',color:'#22C55E',cursor:'pointer'}}
-            onClick={() => photoInputRef.current?.click()} title="Click to add/update photo">
+            onClick={() => photoInputRef.current?.click()} title="Click to update primary photo">
             {person.has_face_encoding ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="8" r="4" stroke="#22C55E" strokeWidth="1.8"/>
@@ -362,12 +364,14 @@ function AuthorizedCard({ person, onRemove, onUpdatePhoto }) {
               </svg>
             ) : person.name?.slice(0,2).toUpperCase() || 'AP'}
           </div>
-          {person.has_face_encoding
-            ? <span className="mp-face-badge" style={{color:'#22C55E',borderColor:'rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.08)'}}>Face ✓</span>
+          {embedCount > 0
+            ? <span className="mp-face-badge" style={{color:'#22C55E',borderColor:'rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.08)'}}>{embedCount} photo{embedCount !== 1 ? 's' : ''}</span>
             : <span className="mp-face-badge" style={{color:'var(--muted)',borderColor:'var(--border)',background:'var(--elevated)'}}>No photo</span>
           }
           <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
             style={{display:'none'}} onChange={e => onUpdatePhoto(person.person_id, e.target.files[0])}/>
+          <input ref={addPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+            style={{display:'none'}} onChange={e => onAddPhoto(person.person_id, e.target.files[0])}/>
         </div>
         <div className="mp-card-info">
           <div className="mp-card-name">{person.name}</div>
@@ -400,11 +404,10 @@ function AuthorizedCard({ person, onRemove, onUpdatePhoto }) {
         )}
       </div>
       <div className="mp-card-actions">
-        {!person.has_face_encoding && (
-          <button className="btn" style={{flex:1,fontSize:11}} onClick={() => photoInputRef.current?.click()}>
-            + Add photo
-          </button>
-        )}
+        <button className="btn" style={{flex:1,fontSize:11}} onClick={() => addPhotoInputRef.current?.click()}
+          title={embedCount >= 10 ? 'Maximum 10 photos reached' : 'Add another angle'}>
+          + Add photo
+        </button>
         <button className="btn"
           style={{flex:1,fontSize:11,borderColor:'rgba(226,75,74,0.3)',color:'#E24B4A',background:'rgba(226,75,74,0.06)'}}
           onClick={() => onRemove(person.person_id)}>
@@ -674,6 +677,12 @@ export default function MissingPersons() {
     catch (err) { console.error(err) }
   }
 
+  const handleAddAuthorizedPhoto = async (personId, file) => {
+    if (!file) return
+    try { await addAuthorizedPersonPhoto(personId, file); await load() }
+    catch (err) { console.error(err) }
+  }
+
   const missing     = profiles.filter(p => p.category === 'missing')
   const criminal    = profiles.filter(p => p.category === 'criminal')
   const activeCount = profiles.filter(p => ['active','matched'].includes(p.status)).length
@@ -728,7 +737,8 @@ export default function MissingPersons() {
                   {authorized.map(p => (
                     <AuthorizedCard key={p.person_id} person={p}
                       onRemove={handleRemoveAuthorized}
-                      onUpdatePhoto={handleUpdateAuthorizedPhoto}/>
+                      onUpdatePhoto={handleUpdateAuthorizedPhoto}
+                      onAddPhoto={handleAddAuthorizedPhoto}/>
                   ))}
                 </div>
               )}

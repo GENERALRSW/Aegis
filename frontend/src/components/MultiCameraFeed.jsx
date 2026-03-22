@@ -242,13 +242,18 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
 
         {status === 'active' && (
           <div className="cs-detections-overlay">
-            {(lastEvent?.authorized_identities || []).slice(0,2).map((auth, i) => (
-              <div key={`auth-${i}`} className="cs-det-pill"
-                style={{ background: '#22C55E22', borderColor: '#22C55E' }}>
-                <span style={{ color: '#22C55E' }}>✓ {auth.person_name}</span>
-                <span className="cs-det-conf">{Math.round(auth.confidence * 100)}%</span>
+            {lastEvent?.fr_operational === false && (
+              <div className="cs-det-pill"
+                style={{ background: 'rgba(245,197,24,0.15)', borderColor: '#F5C518' }}>
+                <span style={{ color: '#F5C518' }}>FR offline</span>
               </div>
-            ))}
+            )}
+            {(lastEvent?.authorized_identities?.length || 0) > 0 && (
+              <div className="cs-det-pill"
+                style={{ background: '#22C55E22', borderColor: '#22C55E' }}>
+                <span style={{ color: '#22C55E' }}>✓ {lastEvent.authorized_identities.length} authorized</span>
+              </div>
+            )}
             {(lastEvent?.security_alerts || []).slice(0,1).map((alert, i) => (
               <div key={`alert-${i}`} className="cs-det-pill"
                 style={{ background: '#E24B4A22', borderColor: '#E24B4A' }}>
@@ -256,10 +261,16 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
                 <span className="cs-det-conf">{alert.alert_type.replace(/_/g,' ')}</span>
               </div>
             ))}
+            {(lastEvent?.visitor_count || 0) > 0 && (
+              <div className="cs-det-pill"
+                style={{ background: 'rgba(102,102,102,0.15)', borderColor: 'var(--muted)' }}>
+                <span style={{ color: 'var(--muted)' }}>{lastEvent.visitor_count} visitors</span>
+              </div>
+            )}
             {(lastEvent?.unidentified_count || 0) > 0 && (
               <div className="cs-det-pill"
-                style={{ background: `${riskColor}22`, borderColor: riskColor }}>
-                <span style={{ color: riskColor }}>{lastEvent.unidentified_count} unidentified</span>
+                style={{ background: '#E24B4A22', borderColor: '#E24B4A' }}>
+                <span style={{ color: '#E24B4A' }}>{lastEvent.unidentified_count} intruders</span>
               </div>
             )}
             {(lastEvent?.weapon_count || 0) > 0 && (

@@ -155,7 +155,7 @@ function DeleteConfirmModal({ name, onConfirm, onClose, isRestricted }) {
     <div className="mp-modal-backdrop" onClick={onClose}>
       <div className="mp-modal mp-modal-sm" onClick={e => e.stopPropagation()}>
         <div className="id-card-header">
-          <span className="card-title">{isRestricted ? 'Deactivate restricted person' : 'Remove profile'}</span>
+          <span className="card-title">{isRestricted ? 'Deactivate restricted person' : 'Archive profile'}</span>
           <button className="id-back" onClick={onClose}>✕</button>
         </div>
         <div className="mp-modal-body">
@@ -166,12 +166,12 @@ function DeleteConfirmModal({ name, onConfirm, onClose, isRestricted }) {
               </svg>
             </div>
             <div style={{fontSize:14,fontWeight:600,color:'var(--text)',fontFamily:'var(--font-sans)',marginBottom:6}}>
-              {isRestricted ? `Deactivate ${name}?` : `Remove ${name}?`}
+              {isRestricted ? `Deactivate ${name}?` : `Archive ${name}?`}
             </div>
             <div style={{fontSize:12,color:'var(--muted)',fontFamily:'var(--font-sans)',lineHeight:1.6}}>
               {isRestricted
                 ? 'This person will be deactivated and no longer trigger alerts when detected on camera.'
-                : 'This profile will be marked as inactive and removed from active search. This cannot be undone.'}
+                : 'This profile will be archived and marked as located. Only admins/JDF can perform this action.'}
             </div>
           </div>
           <div style={{display:'flex',gap:8}}>
@@ -179,7 +179,7 @@ function DeleteConfirmModal({ name, onConfirm, onClose, isRestricted }) {
             <button className="btn" disabled={confirming}
               style={{flex:1,height:40,borderColor:'rgba(226,75,74,0.4)',color:'#E24B4A',background:'rgba(226,75,74,0.08)'}}
               onClick={handleConfirm}>
-              {confirming ? 'Removing...' : isRestricted ? 'Deactivate' : 'Remove'}
+              {confirming ? 'Archiving...' : isRestricted ? 'Deactivate' : 'Archive'}
             </button>
           </div>
         </div>
@@ -232,7 +232,7 @@ function ProfileCard({ profile, onMarkFound, onUpdatePhoto, onEdit, onDelete }) 
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             </button>
-            <button className="mp-icon-btn mp-icon-btn-danger" onClick={() => onDelete(profile)} title="Remove profile">
+            <button className="mp-icon-btn mp-icon-btn-danger" onClick={() => onDelete(profile)} title="Archive — marks this person as located. Only admins/JDF can perform this action.">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                 <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -251,15 +251,20 @@ function ProfileCard({ profile, onMarkFound, onUpdatePhoto, onEdit, onDelete }) 
             <span className="mp-detail-val">{new Date(profile.missing_since).toLocaleDateString()}</span>
           </div>
         )}
-        {profile.match_score > 0 && (
-          <div className="mp-match-bar">
-            <div className="mp-match-info">
-              <span className="mp-detail-key">Best match</span>
-              <span className="mp-match-score" style={{color:'#22C55E'}}>{Math.round(profile.match_score * 100)}%</span>
+        {profile.match_score > 0 && (() => {
+          const score = Math.round((profile.match_score ?? 0) * 100)
+          const stabilityLabel = score >= 75 ? 'Confirmed match' : score >= 45 ? 'Possible match' : 'Weak signal'
+          const barColor = score >= 75 ? '#10B981' : score >= 45 ? '#F59E0B' : '#6B7280'
+          return (
+            <div className="mp-match-bar">
+              <div className="mp-match-info">
+                <span className="mp-detail-key">Best match</span>
+                <span className="mp-match-score" style={{color:barColor}}>{stabilityLabel} — {score}%</span>
+              </div>
+              <div className="mp-bar-track"><div className="mp-bar-fill" style={{width:`${score}%`,background:barColor}}/></div>
             </div>
-            <div className="mp-bar-track"><div className="mp-bar-fill" style={{width:`${Math.round(profile.match_score*100)}%`}}/></div>
-          </div>
-        )}
+          )
+        })()}
       </div>
       <div className="mp-card-actions">
         {!profile.has_face_encoding && (
@@ -410,7 +415,24 @@ function AuthorizedCard({ person, onRemove, onUpdatePhoto, onAddPhoto }) {
       <div className="mp-card-body">
         <div className="mp-detail-row">
           <span className="mp-detail-key">Access level</span>
-          <span className="mp-detail-val" style={{textTransform:'capitalize'}}>{person.access_level || 'standard'}</span>
+          {(() => {
+            const level = person.access_level || 'standard'
+            const levelStyle = level === 'admin'
+              ? {color:'#E24B4A',background:'rgba(226,75,74,0.12)'}
+              : level === 'restricted'
+              ? {color:'#F59E0B',background:'rgba(245,158,11,0.12)'}
+              : {color:'#4A9FE2',background:'rgba(74,159,226,0.12)'}
+            return <span className="af-badge" style={levelStyle}>{level}</span>
+          })()}
+        </div>
+        <div className="mp-detail-row" style={{flexDirection:'column',alignItems:'flex-start',gap:4}}>
+          <div style={{display:'flex',justifyContent:'space-between',width:'100%'}}>
+            <span className="mp-detail-key">Embeddings</span>
+            <span className="mp-detail-val" style={{color: embedCount >= 3 ? '#10B981' : 'var(--muted)'}}>{embedCount}/10</span>
+          </div>
+          <div style={{width:'100%',height:4,borderRadius:2,background:'var(--elevated)',overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${Math.min(embedCount/10,1)*100}%`,background: embedCount >= 3 ? '#10B981' : '#6B7280',borderRadius:2}}/>
+          </div>
         </div>
         {person.registered_at && (
           <div className="mp-detail-row">
@@ -686,7 +708,7 @@ export default function MissingPersons() {
   const handleRemoveAuthorized = async (personId) => {
     try {
       await removeAuthorizedPerson(personId)
-      setAuthorized(prev => prev.filter(p => p.person_id !== personId))
+      await load()
     } catch (err) { console.error(err) }
   }
 

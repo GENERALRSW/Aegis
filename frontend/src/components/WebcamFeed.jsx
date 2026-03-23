@@ -236,7 +236,7 @@ export default function WebcamFeed({ onEventDetected }) {
       ctx.save()
       ctx.font = 'bold 13px sans-serif'
       ctx.fillStyle = 'rgba(255,180,0,0.85)'
-      ctx.fillText('FR OFFLINE — identity by behaviour only', 8, h - 12)
+      ctx.fillText('⚠ FR OFFLINE — identity by behaviour only', 8, h - 12)
       ctx.restore()
     }
   }, [])

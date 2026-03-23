@@ -21,6 +21,8 @@ export default function Overview() {
   const [loading, setLoading]         = useState(true)
   const [now, setNow]                 = useState(new Date())
   const [frOffline, setFrOffline]     = useState(false)
+  const [liveVisitorCount, setLiveVisitorCount] = useState(0)
+  const [liveVisitors, setLiveVisitors]         = useState([])
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000)
@@ -101,6 +103,11 @@ export default function Overview() {
             <div className="stat-card-sub" style={{color:'var(--muted)'}}>Non-suspicious unknown</div>
           </div>
           <div className="ov-glass-chip stat-card">
+            <div className="stat-card-label">Visitors (live)</div>
+            <div className="stat-card-val">{liveVisitorCount}</div>
+            <div className="stat-card-sub" style={{color:'var(--muted)'}}>From active feed</div>
+          </div>
+          <div className="ov-glass-chip stat-card">
             <div className="stat-card-label">Acting missing profiles</div>
             <div className="stat-card-val">{loading ? '—' : missingProfiles.length}</div>
             <div className="stat-card-sub" style={{color:'var(--online)'}}>
@@ -153,6 +160,10 @@ export default function Overview() {
         <div className="camera-panel ov-glass-chip">
           <MultiCameraFeed onEventDetected={(result) => {
             setFrOffline(result?.fr_operational === false)
+            if (result?.visitor_summaries?.length > 0) {
+              setLiveVisitorCount(result.visitor_count ?? result.visitor_summaries.length)
+              setLiveVisitors(result.visitor_summaries)
+            }
             setTimeout(loadData, 1500)
           }}/>
 
@@ -272,6 +283,27 @@ export default function Overview() {
               {conflictAlerts[0]?.summary || 'Aggressive movement pattern'}
             </p>
           </div>
+
+          {/* Live Visitor Summaries */}
+          {liveVisitors.length > 0 && (
+            <div className="ov-glass-chip detection-card" style={{gridColumn:'1/-1'}}>
+              <details>
+                <summary style={{fontSize:12,color:'var(--muted)',fontFamily:'var(--font-sans)',cursor:'pointer',userSelect:'none'}}>
+                  Visitors detected ({liveVisitors.length}) — no alarm
+                </summary>
+                <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:10}}>
+                  {liveVisitors.map((v, i) => (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 10px',background:'var(--elevated)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)'}}>
+                      <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-sans)',flex:1}}>{v.person_name || 'Unknown visitor'}</span>
+                      {v.fused_confidence != null && (
+                        <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-mono)'}}>{Math.round(v.fused_confidence * 100)}%</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          )}
 
           {/* Missing Persons */}
           <div className="ov-glass-chip detection-card">

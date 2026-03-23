@@ -161,17 +161,29 @@ export default function IncidentDetail() {
                             )}
                           </div>
                           <div style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-sans)',marginTop:2,textTransform:'capitalize'}}>{entry.alert_type?.replace(/_/g,' ')}</div>
-                          {(entry.face_confidence != null || entry.gait_confidence != null || entry.fused_confidence != null) && (
+                          {entry.fused_confidence != null && (() => {
+                            const fPct = Math.round(entry.fused_confidence * 100)
+                            const barCol = fPct >= 80 ? '#22C55E' : fPct >= 60 ? '#F5C518' : '#E24B4A'
+                            return (
+                              <div style={{marginTop:6}}>
+                                <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--muted)',fontFamily:'var(--font-sans)',marginBottom:3}}>
+                                  <span>Fused</span>
+                                  <span style={{color:barCol,fontWeight:600}}>{fPct}%</span>
+                                </div>
+                                <div style={{height:4,borderRadius:2,background:'var(--elevated)',overflow:'hidden'}}>
+                                  <div style={{height:'100%',width:`${fPct}%`,background:barCol,borderRadius:2}}/>
+                                </div>
+                              </div>
+                            )
+                          })()}
+                          {(entry.face_confidence != null || entry.gait_confidence != null) && (
                             <div style={{display:'flex',gap:8,marginTop:5,flexWrap:'wrap'}}>
-                              {entry.face_confidence != null && (
-                                <span style={{fontSize:10,color:'var(--text-sub)',fontFamily:'var(--font-sans)'}}>Face: {Math.round(entry.face_confidence*100)}%</span>
-                              )}
-                              {entry.gait_confidence != null && (
-                                <span style={{fontSize:10,color:'var(--text-sub)',fontFamily:'var(--font-sans)'}}>Gait: {Math.round(entry.gait_confidence*100)}%</span>
-                              )}
-                              {entry.fused_confidence != null && (
-                                <span style={{fontSize:10,color:'var(--text)',fontWeight:600,fontFamily:'var(--font-sans)'}}>Combined: {Math.round(entry.fused_confidence*100)}%</span>
-                              )}
+                              <span style={{fontSize:10,color:'var(--text-sub)',fontFamily:'var(--font-sans)'}}>
+                                Face: {entry.face_confidence != null ? `${Math.round(entry.face_confidence*100)}%` : '—'}
+                              </span>
+                              <span style={{fontSize:10,color:'var(--text-sub)',fontFamily:'var(--font-sans)'}}>
+                                Gait: {entry.gait_confidence != null ? `${Math.round(entry.gait_confidence*100)}%` : '—'}
+                              </span>
                             </div>
                           )}
                           {entry._maintained && (

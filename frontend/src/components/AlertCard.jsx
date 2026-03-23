@@ -5,9 +5,10 @@ const TYPE_MAP = {
   conflict:       { label: 'Conflict',       color: 'var(--conflict)', bg: 'rgba(245,197,24,0.15)' },
   intruder:       { label: 'Intruder',       color: 'var(--intruder)', bg: 'rgba(74,159,226,0.15)' },
   multi:          { label: 'Multi',          color: '#7F77DD',          bg: 'rgba(127,119,221,0.15)' },
-  visitor:        { label: 'Visitor',        color: 'var(--muted)',    bg: 'rgba(102,102,102,0.12)' },
-  authorized:     { label: 'Authorized',     color: 'var(--online)',   bg: 'rgba(34,197,94,0.12)' },
-  missing_person: { label: 'Missing Person', color: '#F59E0B',          bg: 'rgba(245,158,11,0.12)' },
+  visitor:           { label: 'Visitor',        color: 'var(--muted)',  bg: 'rgba(102,102,102,0.12)' },
+  authorized:        { label: 'Authorized',     color: 'var(--online)', bg: 'rgba(34,197,94,0.12)'  },
+  missing_person:    { label: 'Missing Person', color: '#F59E0B',        bg: 'rgba(245,158,11,0.12)' },
+  restricted_person: { label: 'Restricted',     color: 'var(--weapon)', bg: 'rgba(226,75,74,0.15)'  },
 }
 
 const STATUS_MAP = {

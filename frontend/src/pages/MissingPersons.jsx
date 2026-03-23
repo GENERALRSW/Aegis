@@ -348,8 +348,24 @@ function RestrictedCard({ person, onRemove, onUpdatePhoto }) {
 function AuthorizedCard({ person, onRemove, onUpdatePhoto, onAddPhoto }) {
   const photoInputRef    = useRef(null)
   const addPhotoInputRef = useRef(null)
-  const isActive     = person.active !== false
-  const embedCount   = person.embedding_count ?? (person.has_face_encoding ? 1 : 0)
+  const [addError, setAddError]     = useState('')
+  const [addSuccess, setAddSuccess] = useState('')
+  const isActive   = person.active !== false
+  const embedCount = person.embedding_count ?? (person.has_face_encoding ? 1 : 0)
+
+  const handleAddPhotoChange = async (file) => {
+    if (!file) return
+    setAddError('')
+    setAddSuccess('')
+    try {
+      await onAddPhoto(person.person_id, file)
+      setAddSuccess('Photo added')
+      setTimeout(() => setAddSuccess(''), 3000)
+    } catch (err) {
+      setAddError(err.message || 'Failed to add photo')
+    }
+  }
+
   return (
     <div className="card mp-card">
       <div className="mp-card-top">
@@ -365,13 +381,13 @@ function AuthorizedCard({ person, onRemove, onUpdatePhoto, onAddPhoto }) {
             ) : person.name?.slice(0,2).toUpperCase() || 'AP'}
           </div>
           {embedCount > 0
-            ? <span className="mp-face-badge" style={{color:'#22C55E',borderColor:'rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.08)'}}>{embedCount} photo{embedCount !== 1 ? 's' : ''}</span>
-            : <span className="mp-face-badge" style={{color:'var(--muted)',borderColor:'var(--border)',background:'var(--elevated)'}}>No photo</span>
+            ? <span className="mp-face-badge" style={{color:'var(--intruder)',borderColor:'rgba(74,159,226,0.3)',background:'rgba(74,159,226,0.08)'}}>{embedCount} photo{embedCount !== 1 ? 's' : ''}</span>
+            : <span className="mp-face-badge" style={{color:'var(--muted)',borderColor:'var(--border)',background:'var(--elevated)'}}>No photos</span>
           }
           <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
             style={{display:'none'}} onChange={e => onUpdatePhoto(person.person_id, e.target.files[0])}/>
           <input ref={addPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-            style={{display:'none'}} onChange={e => onAddPhoto(person.person_id, e.target.files[0])}/>
+            style={{display:'none'}} onChange={e => handleAddPhotoChange(e.target.files[0])}/>
         </div>
         <div className="mp-card-info">
           <div className="mp-card-name">{person.name}</div>
@@ -403,8 +419,11 @@ function AuthorizedCard({ person, onRemove, onUpdatePhoto, onAddPhoto }) {
           </div>
         )}
       </div>
+      {addError && <div className="mp-form-error" style={{margin:'4px 0 0'}}>{addError}</div>}
+      {addSuccess && <div style={{fontSize:11,color:'#22C55E',fontFamily:'var(--font-sans)',padding:'4px 0 0'}}>{addSuccess}</div>}
       <div className="mp-card-actions">
         <button className="btn" style={{flex:1,fontSize:11}} onClick={() => addPhotoInputRef.current?.click()}
+          disabled={embedCount >= 10}
           title={embedCount >= 10 ? 'Maximum 10 photos reached' : 'Add another angle'}>
           + Add photo
         </button>
@@ -679,8 +698,8 @@ export default function MissingPersons() {
 
   const handleAddAuthorizedPhoto = async (personId, file) => {
     if (!file) return
-    try { await addAuthorizedPersonPhoto(personId, file); await load() }
-    catch (err) { console.error(err) }
+    await addAuthorizedPersonPhoto(personId, file)
+    await load()
   }
 
   const missing     = profiles.filter(p => p.category === 'missing')

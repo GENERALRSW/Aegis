@@ -20,6 +20,7 @@ export default function Overview() {
   const [stats, setStats]             = useState({ total:0, weapon:0, conflict:0, intruder:0, visitor:0 })
   const [loading, setLoading]         = useState(true)
   const [now, setNow]                 = useState(new Date())
+  const [frOffline, setFrOffline]     = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000)
@@ -150,7 +151,10 @@ export default function Overview() {
 
         {/* Left — camera panel */}
         <div className="camera-panel ov-glass-chip">
-          <MultiCameraFeed onEventDetected={() => setTimeout(loadData, 1500)}/>
+          <MultiCameraFeed onEventDetected={(result) => {
+            setFrOffline(result?.fr_operational === false)
+            setTimeout(loadData, 1500)
+          }}/>
 
           <div className="cam-list-inner">
             <div className="cam-tabs">
@@ -191,6 +195,12 @@ export default function Overview() {
 
         {/* Right — 2×2 detection grid */}
         <div className="detection-grid">
+          {frOffline && (
+            <div style={{gridColumn:'1/-1',padding:'7px 12px',background:'rgba(245,158,11,0.1)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:'var(--radius-sm)',fontSize:11,color:'#F59E0B',fontFamily:'var(--font-sans)',display:'flex',alignItems:'center',gap:6}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#F59E0B" strokeWidth="1.8"/></svg>
+              Facial recognition offline — classification by behaviour only
+            </div>
+          )}
 
           {/* Weapon Detected */}
           <div className="ov-glass-chip detection-card">
@@ -234,6 +244,12 @@ export default function Overview() {
               </div>
             )}
             <p className="detection-desc">Un-authorised zone entry</p>
+            {!loading && (stats.total > 0 || stats.visitor > 0) && (
+              <div style={{display:'flex',gap:10,marginTop:4,flexWrap:'wrap'}}>
+                {stats.intruder > 0 && <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-sans)'}}>{stats.intruder} unknown</span>}
+                {stats.visitor > 0 && <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-sans)'}}>{stats.visitor} visitors</span>}
+              </div>
+            )}
           </div>
 
           {/* Conflict Behavior */}

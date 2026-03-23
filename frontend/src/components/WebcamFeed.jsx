@@ -103,28 +103,67 @@ export default function WebcamFeed({ onEventDetected }) {
     const ctx = overlay.getContext('2d')
     ctx.clearRect(0, 0, w, h)
 
-    const COLORS = {
-      intruder:   '#E24B4A',
-      weapon:     '#FF6B00',
-      conflict:   '#F5C518',
-      authorized: '#22C55E',
+    const NON_PERSON_COLORS = {
+      weapon:   '#FF6B00',
+      conflict: '#F5C518',
     }
+
+    // Build sorted identity list for index-based mapping of intruder detections
+    // Priority: authorized > visitors > security alerts, sorted by confidence within each group
+    const sortedIdentities = [
+      ...(result.authorized_identities || []),
+      ...(result.visitor_summaries || []),
+      ...(result.security_alerts || []),
+    ].sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+    let intruderIdx = 0
 
     // Draw YOLO bounding boxes
     for (const det of (result.detections || [])) {
       const bb = det.bounding_box
       if (!bb) continue
-      const color = COLORS[det.label] || '#4A9FE2'
+
+      let color, labelText
+
+      if (det.label === 'intruder') {
+        const identity = sortedIdentities[intruderIdx++]
+        if (identity) {
+          const cls   = identity.identity_classification || ''
+          const atype = identity.alert_type || ''
+          const held  = identity._maintained === true ? ' (held)' : ''
+          if (cls === 'authorized' || atype === 'authorized_person') {
+            color = '#22C55E'
+            labelText = `${identity.person_name} - Authorized${held}`
+          } else if (cls === 'visitor' || atype === 'visitor') {
+            color = '#888888'
+            labelText = `Visitor${held}`
+          } else if (atype === 'missing_person') {
+            color = '#F59E0B'
+            labelText = `${identity.person_name} - Missing${held}`
+          } else if (atype === 'restricted_person') {
+            color = '#E24B4A'
+            labelText = `${identity.person_name} - Restricted${held}`
+          } else {
+            color = '#4A9FE2'
+            labelText = `Unknown Person${held}`
+          }
+        } else {
+          color = '#4A9FE2'
+          labelText = 'Unknown Person'
+        }
+      } else {
+        color = NON_PERSON_COLORS[det.label] || '#4A9FE2'
+        labelText = `${det.label} ${Math.round(det.confidence * 100)}%`
+      }
+
       ctx.strokeStyle = color
       ctx.lineWidth   = 2
       ctx.strokeRect(bb.x1, bb.y1, bb.width, bb.height)
-      const label = `${det.label} ${Math.round(det.confidence * 100)}%`
       ctx.font = 'bold 12px monospace'
-      const tw = ctx.measureText(label).width
+      const tw = ctx.measureText(labelText).width
       ctx.fillStyle = color + 'cc'
       ctx.fillRect(bb.x1, bb.y1 - 18, tw + 8, 18)
       ctx.fillStyle = '#fff'
-      ctx.fillText(label, bb.x1 + 4, bb.y1 - 4)
+      ctx.fillText(labelText, bb.x1 + 4, bb.y1 - 4)
     }
 
     // Draw MediaPipe skeleton for conflict detections
@@ -151,12 +190,16 @@ export default function WebcamFeed({ onEventDetected }) {
       }
     }
 
-    // Draw green "AUTHORIZED" banners for recognized persons
-    for (const auth of (result.authorized_identities || [])) {
+    // Draw authorized identity banners for persons without bounding boxes (gait-only matches)
+    const authWithoutBox = (result.authorized_identities || []).filter(
+      (_, i) => i >= intruderIdx
+    )
+    for (const auth of authWithoutBox) {
       ctx.font = 'bold 11px monospace'
-      const label = `✓ ${auth.person_name} — ${auth.category || 'authorized'}`
+      const held  = auth._maintained ? ' (held)' : ''
+      const label = `✓ ${auth.person_name} — ${auth.category || 'authorized'}${held}`
       const tw = ctx.measureText(label).width
-      const yOffset = (result.authorized_identities.indexOf(auth)) * 22
+      const yOffset = authWithoutBox.indexOf(auth) * 22
       ctx.fillStyle = '#22C55Ecc'
       ctx.fillRect(4, 4 + yOffset, tw + 10, 20)
       ctx.fillStyle = '#fff'
@@ -252,7 +295,7 @@ export default function WebcamFeed({ onEventDetected }) {
             {lastEvent?.fr_operational === false && (
               <div className="wcf-det-pill"
                 style={{ background: 'rgba(245,197,24,0.15)', borderColor: '#F5C518' }}>
-                <span style={{ color: '#F5C518' }}>FR offline</span>
+                <span style={{ color: '#F5C518' }}>FR offline — behaviour-only</span>
               </div>
             )}
             {(lastEvent?.authorized_identities?.length || 0) > 0 && (
@@ -277,7 +320,7 @@ export default function WebcamFeed({ onEventDetected }) {
             {(lastEvent?.unidentified_count || 0) > 0 && (
               <div className="wcf-det-pill"
                 style={{ background: '#E24B4A22', borderColor: '#E24B4A' }}>
-                <span style={{ color: '#E24B4A' }}>{lastEvent.unidentified_count} intruders</span>
+                <span style={{ color: '#E24B4A' }}>{lastEvent.unidentified_count} unidentified</span>
               </div>
             )}
             {(lastEvent?.weapon_count || 0) > 0 && (

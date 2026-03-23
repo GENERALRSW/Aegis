@@ -103,53 +103,67 @@ export default function WebcamFeed({ onEventDetected }) {
     const ctx = overlay.getContext('2d')
     ctx.clearRect(0, 0, w, h)
 
-    const NON_PERSON_COLORS = {
-      weapon:   '#FF6B00',
-      conflict: '#F5C518',
+    const NON_PERSON_COLORS = { weapon: '#FF6B00', conflict: '#F5C518' }
+
+    // Identity classification → color (item 9)
+    const CLASS_COLORS = {
+      authorized:           '#10B981',
+      visitor:              '#6B7280',
+      intruder:             '#EF4444',
+      missing_person_match: '#F59E0B',
     }
 
-    // Build sorted identity list for index-based mapping of intruder detections
-    // Priority: authorized > visitors > security alerts, sorted by confidence within each group
-    const sortedIdentities = [
-      ...(result.authorized_identities || []),
-      ...(result.visitor_summaries || []),
-      ...(result.security_alerts || []),
+    // Merge: security_alerts first (item 10)
+    const allIdentities = [
+      ...(result.security_alerts ?? []),
+      ...(result.authorized_identities ?? []),
+      ...(result.visitor_summaries ?? []),
     ].sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
     let intruderIdx = 0
 
-    // Draw YOLO bounding boxes
+    // Pre-assign identities to intruder boxes, then sort for draw order: threats on top (item 9)
+    const boxItems = []
     for (const det of (result.detections || [])) {
       const bb = det.bounding_box
       if (!bb) continue
+      const identity = det.label === 'intruder' ? (allIdentities[intruderIdx++] || null) : null
+      boxItems.push({ det, bb, identity })
+    }
+    const DRAW_PRIORITY = { authorized: 0, visitor: 1, intruder: 2, missing_person_match: 2 }
+    boxItems.sort((a, b) => {
+      const aP = DRAW_PRIORITY[a.identity?.identity_classification || ''] ?? (a.det.label === 'intruder' ? 1 : 0)
+      const bP = DRAW_PRIORITY[b.identity?.identity_classification || ''] ?? (b.det.label === 'intruder' ? 1 : 0)
+      return aP - bP
+    })
 
+    // Draw bounding boxes
+    for (const { det, bb, identity } of boxItems) {
       let color, labelText
 
-      if (det.label === 'intruder') {
-        const identity = sortedIdentities[intruderIdx++]
-        if (identity) {
-          const cls   = identity.identity_classification || ''
-          const atype = identity.alert_type || ''
-          const held  = identity._maintained === true ? ' (held)' : ''
-          if (cls === 'authorized' || atype === 'authorized_person') {
-            color = '#22C55E'
-            labelText = `${identity.person_name} - Authorized${held}`
-          } else if (cls === 'visitor' || atype === 'visitor') {
-            color = '#888888'
-            labelText = `Visitor${held}`
-          } else if (atype === 'missing_person') {
-            color = '#F59E0B'
-            labelText = `${identity.person_name} - Missing${held}`
-          } else if (atype === 'restricted_person') {
-            color = '#E24B4A'
-            labelText = `${identity.person_name} - Restricted${held}`
-          } else {
-            color = '#4A9FE2'
-            labelText = `Unknown Person${held}`
-          }
-        } else {
-          color = '#4A9FE2'
-          labelText = 'Unknown Person'
-        }
+      if (det.label === 'intruder' && identity) {
+        const cls   = identity.identity_classification || ''
+        const atype = identity.alert_type || ''
+        color = CLASS_COLORS[cls] || (
+          atype === 'authorized_person' ? CLASS_COLORS.authorized :
+          atype === 'visitor'           ? CLASS_COLORS.visitor :
+          atype === 'missing_person'    ? CLASS_COLORS.missing_person_match :
+          '#6B7280'
+        )
+        const classLabel =
+          cls === 'authorized' || atype === 'authorized_person' ? 'Authorized' :
+          cls === 'visitor'    || atype === 'visitor'           ? 'Visitor' :
+          atype === 'missing_person'                            ? 'Missing' :
+          atype === 'restricted_person'                         ? 'Restricted' : 'Unknown'
+        const personName  = identity.person_name || classLabel
+        const conf        = Math.round((identity.fused_confidence ?? identity.confidence ?? 0) * 100)
+        const matchSuffix = identity.match_type === 'combined' ? ' (face+gait)' :
+          identity.match_type === 'gait' ? ' (gait)' :
+          identity.match_type === 'face' ? ' (face)' : ''
+        const heldSuffix  = identity._maintained === true ? ' [held]' : ''
+        labelText = `${personName} — ${classLabel} ${conf}%${matchSuffix}${heldSuffix}`
+      } else if (det.label === 'intruder') {
+        color = '#6B7280'
+        labelText = 'Unknown Person'
       } else {
         color = NON_PERSON_COLORS[det.label] || '#4A9FE2'
         labelText = `${det.label} ${Math.round(det.confidence * 100)}%`
@@ -164,6 +178,18 @@ export default function WebcamFeed({ onEventDetected }) {
       ctx.fillRect(bb.x1, bb.y1 - 18, tw + 8, 18)
       ctx.fillStyle = '#fff'
       ctx.fillText(labelText, bb.x1 + 4, bb.y1 - 4)
+
+      // Face/gait sub-line when both are present (item 1)
+      if (identity?.face_confidence != null && identity?.gait_confidence != null) {
+        ctx.font = '10px monospace'
+        ctx.globalAlpha = 0.75
+        ctx.fillStyle = '#fff'
+        ctx.fillText(
+          `Face ${Math.round(identity.face_confidence * 100)}% / Gait ${Math.round(identity.gait_confidence * 100)}%`,
+          bb.x1 + 4, bb.y1 + 14
+        )
+        ctx.globalAlpha = 1.0
+      }
     }
 
     // Draw MediaPipe skeleton for conflict detections
@@ -190,20 +216,28 @@ export default function WebcamFeed({ onEventDetected }) {
       }
     }
 
-    // Draw authorized identity banners for persons without bounding boxes (gait-only matches)
-    const authWithoutBox = (result.authorized_identities || []).filter(
-      (_, i) => i >= intruderIdx
-    )
+    // Gait-only authorized banners (no bounding box)
+    const authWithoutBox = (result.authorized_identities || []).filter((_, i) => i >= intruderIdx)
     for (const auth of authWithoutBox) {
       ctx.font = 'bold 11px monospace'
-      const held  = auth._maintained ? ' (held)' : ''
-      const label = `✓ ${auth.person_name} — ${auth.category || 'authorized'}${held}`
-      const tw = ctx.measureText(label).width
-      const yOffset = authWithoutBox.indexOf(auth) * 22
-      ctx.fillStyle = '#22C55Ecc'
-      ctx.fillRect(4, 4 + yOffset, tw + 10, 20)
+      const conf  = Math.round((auth.fused_confidence ?? auth.confidence ?? 0) * 100)
+      const held  = auth._maintained ? ' [held]' : ''
+      const label = `✓ ${auth.person_name} — authorized ${conf}%${held}`
+      const tw    = ctx.measureText(label).width
+      const yOff  = authWithoutBox.indexOf(auth) * 22
+      ctx.fillStyle = '#10B981cc'
+      ctx.fillRect(4, 4 + yOff, tw + 10, 20)
       ctx.fillStyle = '#fff'
-      ctx.fillText(label, 9, 18 + yOffset)
+      ctx.fillText(label, 9, 18 + yOff)
+    }
+
+    // FR offline watermark (item 2)
+    if (result.fr_operational === false) {
+      ctx.save()
+      ctx.font = 'bold 13px sans-serif'
+      ctx.fillStyle = 'rgba(255,180,0,0.85)'
+      ctx.fillText('FR OFFLINE — identity by behaviour only', 8, h - 12)
+      ctx.restore()
     }
   }, [])
 

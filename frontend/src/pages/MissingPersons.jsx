@@ -251,6 +251,11 @@ function ProfileCard({ profile, onMarkFound, onUpdatePhoto, onEdit, onDelete }) 
             <span className="mp-detail-val">{new Date(profile.missing_since).toLocaleDateString()}</span>
           </div>
         )}
+        {profile.last_match_glare && (
+          <div style={{fontSize:10,color:'#F59E0B',fontFamily:'var(--font-sans)',padding:'3px 0'}}>
+            ⚡ Last match was under glare conditions
+          </div>
+        )}
         {profile.match_score > 0 && (() => {
           const score = Math.round((profile.match_score ?? 0) * 100)
           const stabilityLabel = score >= 75 ? 'Confirmed match' : score >= 45 ? 'Possible match' : 'Weak signal'

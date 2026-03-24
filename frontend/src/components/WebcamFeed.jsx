@@ -231,6 +231,19 @@ export default function WebcamFeed({ onEventDetected }) {
       ctx.fillText(label, 9, 18 + yOff)
     }
 
+    // Glare watermark
+    if (result.glare_detected === true) {
+      const quality = result.frame_quality ?? {}
+      ctx.save()
+      ctx.font = 'bold 12px monospace'
+      ctx.fillStyle = 'rgba(255,200,0,0.90)'
+      ctx.fillText(
+        `⚠ GLARE — gait mode active  (L=${quality.mean_luminance?.toFixed(0) ?? '?'}  ${Math.round((quality.glare_fraction ?? 0) * 100)}% blown)`,
+        8, h - 30
+      )
+      ctx.restore()
+    }
+
     // FR offline watermark (item 2)
     if (result.fr_operational === false) {
       ctx.save()
@@ -272,9 +285,12 @@ export default function WebcamFeed({ onEventDetected }) {
       drawOverlay(result)
       setLastEvent(result)
       setFrameCount(c => c + 1)
-      // FIX 4: notify Overview of every detection so counts stay live
       if (result.detections?.length > 0) {
-        onEventDetected?.(result)
+        onEventDetected?.({
+          ...result,
+          glareDetected: result.glare_detected,
+          frOperational: result.fr_operational,
+        })
       }
     } catch (err) {
       console.warn('Frame send error:', err.message)

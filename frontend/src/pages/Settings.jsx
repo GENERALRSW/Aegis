@@ -240,12 +240,24 @@ export default function Settings() {
                   <span className="stt-mono">{frStatus.model}</span>
                 </SettingRow>
               )}
-              <SettingRow label="Spatial face filter" sub="Always-on backend behaviour">
-                <span className="stt-pill" style={{color:'#22C55E',background:'rgba(34,197,94,0.1)',border:'1px solid rgba(34,197,94,0.25)'}}>Active — min 80×80 px, center-weighted</span>
-              </SettingRow>
-              <SettingRow label="Temporal smoothing" sub="Always-on backend behaviour">
-                <span className="stt-pill" style={{color:'#22C55E',background:'rgba(34,197,94,0.1)',border:'1px solid rgba(34,197,94,0.25)'}}>8-frame EMA with hysteresis</span>
-              </SettingRow>
+            </Section>
+
+            {/* Pipeline Status */}
+            <Section
+              title="Pipeline Status"
+              subtitle="Always-on backend behaviours — read-only, for operator awareness."
+            >
+              {[
+                ['Glare correction',     'Adaptive gamma + CLAHE — always on'],
+                ['Spatial face filter',  'Min 80×80 px · centre-weighted'],
+                ['Cross-frame averaging','3-frame embedding buffer per camera'],
+                ['Temporal smoothing',   '8-frame EMA · hysteresis'],
+                ['Incident recording',   '15 s pre-incident clip — auto-saved on confirmed threat'],
+              ].map(([label, badge]) => (
+                <SettingRow key={label} label={label} sub="Always-on backend behaviour">
+                  <span className="stt-pill" style={{color:'#22C55E',background:'rgba(34,197,94,0.1)',border:'1px solid rgba(34,197,94,0.25)',whiteSpace:'nowrap'}}>{badge}</span>
+                </SettingRow>
+              ))}
             </Section>
 
             {/* Security Feature Flags */}

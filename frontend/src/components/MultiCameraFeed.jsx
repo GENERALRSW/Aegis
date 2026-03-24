@@ -71,12 +71,16 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
       missing_person_match: '#F59E0B',
     }
 
-    // Merge: security_alerts first (item 10)
+    // Merge: security_alerts first — preserve all backend fields
     const allIdentities = [
       ...(result.security_alerts ?? []),
       ...(result.authorized_identities ?? []),
       ...(result.visitor_summaries ?? []),
-    ].sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+    ].map(p => ({
+      ...p,
+      identity_classification: p.identity_classification ?? 'visitor',
+      fused_confidence: p.fused_confidence ?? p.confidence ?? 0,
+    })).sort((a, b) => (b.fused_confidence || 0) - (a.fused_confidence || 0))
     let intruderIdx = 0
 
     // Pre-assign identities to intruder boxes, then sort for draw order: threats on top (item 9)
@@ -115,10 +119,11 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
         const personName  = identity.person_name || classLabel
         const conf        = Math.round((identity.fused_confidence ?? identity.confidence ?? 0) * 100)
         const matchSuffix = identity.match_type === 'combined' ? ' (face+gait)' :
-          identity.match_type === 'gait' ? ' (gait)' :
+          identity.match_type === 'gait' ? ' (gait⬆)' :
           identity.match_type === 'face' ? ' (face)' : ''
         const heldSuffix  = identity._maintained === true ? ' [held]' : ''
-        labelText = `${personName} — ${classLabel} ${conf}%${matchSuffix}${heldSuffix}`
+        const glareTag    = identity.glare_detected ? ' ⚡' : ''
+        labelText = `${personName} — ${classLabel} ${conf}%${matchSuffix}${heldSuffix}${glareTag}`
       } else if (det.label === 'intruder') {
         color = '#6B7280'
         labelText = 'Unknown Person'
@@ -189,7 +194,20 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
       ctx.fillText(label, 9, 18 + yOff)
     }
 
-    // FR offline watermark (item 2)
+    // Glare watermark
+    if (result.glare_detected === true) {
+      const quality = result.frame_quality ?? {}
+      ctx.save()
+      ctx.font = 'bold 12px monospace'
+      ctx.fillStyle = 'rgba(255,200,0,0.90)'
+      ctx.fillText(
+        `⚠ GLARE — gait mode active  (L=${quality.mean_luminance?.toFixed(0) ?? '?'}  ${Math.round((quality.glare_fraction ?? 0) * 100)}% blown)`,
+        8, h - 30
+      )
+      ctx.restore()
+    }
+
+    // FR offline watermark
     if (result.fr_operational === false) {
       ctx.save()
       ctx.font = 'bold 13px sans-serif'
@@ -217,7 +235,11 @@ function CameraSlot({ slotId, onEventDetected, onRemove }) {
       setLastEvent(result)
       setFrameCount(c => c + 1)
       if (result.detections?.length > 0) {
-        onEventDetected?.(result)
+        onEventDetected?.({
+          ...result,
+          glareDetected: result.glare_detected,
+          frOperational: result.fr_operational,
+        })
       }
     } catch (err) {
       console.warn(`[Slot ${slotId}] Frame send error:`, err.message)

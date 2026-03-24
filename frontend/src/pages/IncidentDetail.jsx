@@ -100,7 +100,22 @@ export default function IncidentDetail() {
                 <div className="id-player-lines">{[...Array(8)].map((_,i)=><div key={i} className="id-player-line" style={{width:`${55+Math.sin(i*.9)*35}%`}}/>)}</div>
                 <div className="id-bbox"><span className="id-bbox-label">{eventType} · {confidence}%</span></div>
                 <div className="id-conf-overlay">CV Model · {confidence}% confidence</div>
+                {event.glare_detected && (
+                  <div style={{position:'absolute',top:6,right:6,padding:'2px 8px',background:'rgba(245,158,11,0.15)',border:'1px solid rgba(245,158,11,0.4)',borderRadius:4,fontSize:10,color:'#F59E0B',fontFamily:'var(--font-mono)',fontWeight:600}}>
+                    ⚡ Glare — gait-priority mode
+                  </div>
+                )}
               </div>
+              {event.clip_path && (
+                <div style={{padding:'8px 12px',display:'flex',alignItems:'center',gap:8,fontSize:11,fontFamily:'var(--font-sans)',borderTop:'1px solid var(--border)'}}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{color:'var(--muted)'}}>Evidence clip:</span>
+                  <a href={`/api/incidents/clip?path=${encodeURIComponent(event.clip_path)}`} download
+                    style={{color:'#4A9FE2',textDecoration:'none',fontFamily:'var(--font-mono)'}}>
+                    {event.clip_path.split('/').pop()}
+                  </a>
+                </div>
+              )}
               <div className="id-controls">
                 <button className="id-play-btn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 9-14 9V3z" fill="white"/></svg></button>
                 <span className="id-time">0.0s / —</span>
@@ -130,6 +145,17 @@ export default function IncidentDetail() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#E24B4A" strokeWidth="1.8"/></svg>
                 <span>Confidence: <strong style={{color: confidence>=80?'#E24B4A':confidence>=60?'#F5C518':'#4A9FE2'}}>{confidence}%</strong></span>
               </div>
+              {event.frame_quality && (
+                <details style={{marginTop:8,fontSize:11,color:'var(--muted)',fontFamily:'var(--font-sans)'}}>
+                  <summary style={{cursor:'pointer',userSelect:'none',padding:'4px 0'}}>Frame quality</summary>
+                  <div style={{marginTop:6,display:'flex',flexDirection:'column',gap:4,paddingLeft:8}}>
+                    <span>Mean luminance: {event.frame_quality.mean_luminance?.toFixed(0) ?? '—'} / 255</span>
+                    <span>Glare fraction: {((event.frame_quality.glare_fraction ?? 0) * 100).toFixed(1)}%</span>
+                    {event.frame_quality.is_overexposed && <span style={{color:'#F59E0B'}}>⚡ Overexposed</span>}
+                    {event.frame_quality.is_dark && <span style={{color:'#6B7280'}}>🌑 Underexposed</span>}
+                  </div>
+                </details>
+              )}
             </div>
 
             {allIdentities.length > 0 && (
@@ -251,6 +277,11 @@ export default function IncidentDetail() {
                   </div>
                 ))}
               </div>
+              {event.glare_detected && (
+                <div style={{marginTop:8,padding:'6px 10px',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:'var(--radius-sm)',fontSize:11,color:'#F59E0B',fontFamily:'var(--font-sans)'}}>
+                  ⚡ Glare — gait-priority mode active during this detection
+                </div>
+              )}
               <div className="id-map">
                 <div className="id-map-grid"/>
                 <div className="id-map-pin"/>

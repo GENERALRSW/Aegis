@@ -23,6 +23,8 @@ export default function Overview() {
   const [frOffline, setFrOffline]     = useState(false)
   const [liveVisitorCount, setLiveVisitorCount] = useState(0)
   const [liveVisitors, setLiveVisitors]         = useState([])
+  const [liveGlare, setLiveGlare]               = useState(false)
+  const [liveGlareCamera, setLiveGlareCamera]   = useState('')
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000)
@@ -159,13 +161,23 @@ export default function Overview() {
         {/* Left — camera panel */}
         <div className="camera-panel ov-glass-chip">
           <MultiCameraFeed onEventDetected={(result) => {
-            setFrOffline(result?.fr_operational === false)
+            setFrOffline(result?.frOperational === false || result?.fr_operational === false)
+            setLiveGlare(result?.glareDetected === true || result?.glare_detected === true)
+            if (result?.glareDetected || result?.glare_detected) {
+              setLiveGlareCamera(result?.camera_id || '')
+            }
             if (result?.visitor_summaries?.length > 0) {
               setLiveVisitorCount(result.visitor_count ?? result.visitor_summaries.length)
               setLiveVisitors(result.visitor_summaries)
             }
             setTimeout(loadData, 1500)
           }}/>
+
+          {liveGlare && (
+            <div style={{margin:'6px 0',padding:'7px 12px',background:'rgba(245,158,11,0.1)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:'var(--radius-sm)',fontSize:11,color:'#F59E0B',fontFamily:'var(--font-sans)',display:'flex',alignItems:'center',gap:6}}>
+              ⚡ Glare detected{liveGlareCamera ? ` on ${liveGlareCamera}` : ''} — gait analysis promoted to primary signal
+            </div>
+          )}
 
           <div className="cam-list-inner">
             <div className="cam-tabs">
